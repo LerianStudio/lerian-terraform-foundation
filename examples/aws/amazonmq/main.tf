@@ -6,7 +6,18 @@ resource "random_password" "master" {
 }
 
 locals {
-  name = var.name
+  # Detect if this is a cluster deployment
+  is_cluster = var.deployment_mode == "CLUSTER_MULTI_AZ"
+
+  # Add mode suffix to resource name for clarity
+  mode_suffix = local.is_cluster ? "cluster" : "single"
+  name        = "${var.name}-${local.mode_suffix}"
+
+  # Subnet selection logic:
+  # - SINGLE_INSTANCE: 1 subnet
+  # - CLUSTER_MULTI_AZ: 2-3 subnets in different AZs (RabbitMQ supports up to 3)
+  subnet_ids = local.is_cluster ? slice(data.aws_subnets.private.ids, 0, min(length(data.aws_subnets.private.ids), 3)) : [data.aws_subnets.private.ids[0]]
+
   tags = merge(
     {
       "Name"        = local.name
@@ -52,7 +63,7 @@ resource "aws_mq_broker" "main" {
   host_instance_type         = var.host_instance_type
   publicly_accessible        = var.publicly_accessible
   auto_minor_version_upgrade = var.auto_minor_version_upgrade
-  subnet_ids                 = [data.aws_subnets.private.ids[0]]
+  subnet_ids                 = local.subnet_ids
   security_groups            = [aws_security_group.mq.id]
 
   user {
@@ -68,5 +79,18 @@ resource "aws_mq_broker" "main" {
   # Enable general and audit logs
   logs {
     general = true
+  }
+
+  # Validation preconditions
+  lifecycle {
+    precondition {
+      condition     = !(var.deployment_mode == "CLUSTER_MULTI_AZ" && can(regex("^mq\\.t3\\.", var.host_instance_type)))
+      error_message = "CLUSTER_MULTI_AZ deployment mode does not support mq.t3.* instance types. Use mq.m5.large or larger."
+    }
+
+    precondition {
+      condition     = !local.is_cluster || length(data.aws_subnets.private.ids) >= 2
+      error_message = "CLUSTER_MULTI_AZ deployment mode requires at least 2 private subnets in different availability zones."
+    }
   }
 }

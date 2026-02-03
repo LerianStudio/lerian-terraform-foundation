@@ -27,3 +27,13 @@ output "mq_password_secret_arn" {
   description = "The ARN of the secret containing the MQ admin password."
   value       = aws_secretsmanager_secret.mq_password.arn
 }
+
+output "broker_primary_endpoint" {
+  description = "The primary endpoint for the broker. For cluster mode, this is the first endpoint in the list."
+  value       = try(aws_mq_broker.main.instances[0].endpoints[0], null)
+}
+
+output "is_cluster_mode" {
+  description = "Whether the broker is deployed in cluster mode (CLUSTER_MULTI_AZ)."
+  value       = var.deployment_mode == "CLUSTER_MULTI_AZ"
+}

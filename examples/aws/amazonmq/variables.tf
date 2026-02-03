@@ -40,9 +40,9 @@ variable "engine_version" {
 }
 
 variable "host_instance_type" {
-  description = "The broker's instance type"
+  description = "The broker's instance type. Note: SINGLE_INSTANCE supports mq.t3.* for dev/test, but mq.m5.large+ is recommended for production. CLUSTER_MULTI_AZ requires mq.m5.large or larger (mq.t3.* NOT supported)."
   type        = string
-  default     = "mq.t3.micro"
+  default     = "mq.m5.large"
 }
 
 variable "publicly_accessible" {

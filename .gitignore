@@ -53,3 +53,6 @@ package-lock.json
 
 # Plans and documentation (local only)
 docs/
+
+# Beads issue tracker (local only)
+.beads/
