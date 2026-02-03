@@ -28,8 +28,8 @@ output "mq_password_secret_arn" {
   value       = aws_secretsmanager_secret.mq_password.arn
 }
 
-output "broker_primary_endpoint" {
-  description = "The primary endpoint for the broker. For cluster mode, this is the first endpoint in the list."
+output "broker_first_endpoint" {
+  description = "The first endpoint from aws_mq_broker.main.instances[0].endpoints[0]. Note: For RabbitMQ clusters, there is no stable primary - ordering is not guaranteed. Use broker_endpoints for the full list."
   value       = try(aws_mq_broker.main.instances[0].endpoints[0], null)
 }
 

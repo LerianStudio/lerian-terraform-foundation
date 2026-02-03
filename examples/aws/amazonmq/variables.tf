@@ -22,9 +22,14 @@ variable "vpc_name" {
 }
 
 variable "deployment_mode" {
-  description = "The deployment mode of the broker. Valid values: SINGLE_INSTANCE, ACTIVE_STANDBY_MULTI_AZ, CLUSTER_MULTI_AZ"
+  description = "The deployment mode of the broker. Valid values: SINGLE_INSTANCE, CLUSTER_MULTI_AZ. Note: ACTIVE_STANDBY_MULTI_AZ is not supported (ActiveMQ only)."
   type        = string
-  default     = "SINGLE_INSTANCE"
+  default     = "CLUSTER_MULTI_AZ"
+
+  validation {
+    condition     = contains(["SINGLE_INSTANCE", "CLUSTER_MULTI_AZ"], var.deployment_mode)
+    error_message = "deployment_mode must be either 'SINGLE_INSTANCE' or 'CLUSTER_MULTI_AZ'. Note: 'ACTIVE_STANDBY_MULTI_AZ' is not supported (ActiveMQ only)."
+  }
 }
 
 variable "engine_type" {
@@ -36,7 +41,7 @@ variable "engine_type" {
 variable "engine_version" {
   description = "The version of the broker engine"
   type        = string
-  default     = "3.11.28"
+  default     = "3.13"
 }
 
 variable "host_instance_type" {

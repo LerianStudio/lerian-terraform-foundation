@@ -13,7 +13,7 @@ This means:
 
 ### Why This Happens
 
-AWS AmazonMQ does not support in-place upgrade from single instance to cluster mode. Terraform will detect this as a resource replacement because:
+AWS AmazonMQ does not support in-place upgrade from single-instance to cluster mode. Terraform will detect this as a resource replacement because:
 
 1. The `deployment_mode` change requires a new broker
 2. The broker name changes (e.g., `midaz-mq-single` to `midaz-mq-cluster`)
@@ -23,7 +23,7 @@ AWS AmazonMQ does not support in-place upgrade from single instance to cluster m
 
 ## Recommended Upgrade Procedure
 
-**Our recommendation:** Create a NEW cluster broker alongside the existing single instance broker, then switch traffic. Do NOT apply terraform changes directly over the existing broker.
+**Our recommendation:** Create a NEW cluster broker alongside the existing single-instance broker, then switch traffic. Do NOT apply terraform changes directly over the existing broker.
 
 ### Prerequisites
 
@@ -36,7 +36,7 @@ Before starting the upgrade:
 
 ### Step 1: Create New Cluster Broker (Keep Single Instance Running)
 
-**Purpose:** Create the new cluster broker without destroying the existing single instance.
+**Purpose:** Create the new cluster broker without destroying the existing single-instance.
 
 Copy the AmazonMQ terraform to a new folder (e.g., `amazonmq-cluster/`) and configure for cluster mode:
 
@@ -66,18 +66,25 @@ At this point you will have BOTH brokers running:
 **Purpose:** Prepare the new cluster with the same queue configuration.
 
 ```bash
-# Get new cluster endpoint and credentials
-terraform output broker_primary_endpoint
+# Get new cluster endpoint
+terraform output broker_first_endpoint
+
+# Retrieve password securely to a temporary file (not stdout/shell history)
+umask 077
 aws secretsmanager get-secret-value \
   --secret-id "midaz-mq-cluster/amazonmq-password" \
-  --query SecretString --output text
+  --query SecretString --output text --no-cli-pager > /tmp/mq_password.txt
+chmod 600 /tmp/mq_password.txt
 
 # Create queues on new cluster using RabbitMQ Management API
-curl -u $MQ_USER:$MQ_PASSWORD -X PUT \
+# Read password from file to avoid exposing in environment variables
+curl -u "midaz_admin:$(cat /tmp/mq_password.txt)" -X PUT \
   https://<new-cluster-endpoint>:15671/api/queues/%2F/your-queue-name \
   -H "content-type: application/json" \
   -d '{"durable": true}'
 ```
+
+> **Security Note:** Avoid exporting secrets to environment variables (`export MQ_PASSWORD=...`) as they persist in shell history and process listings. The `/tmp/mq_password.txt` file will be used in Steps 4 and 7 - clean it up after Step 7 completes.
 
 ### Step 3: Turn Off Traffic to Midaz Application
 
@@ -90,8 +97,8 @@ Disable incoming traffic to your Midaz application. The method depends on your i
 **Purpose:** Process all pending messages to prevent data loss.
 
 ```bash
-# Monitor queue depths until empty
-curl -u $MQ_USER:$MQ_PASSWORD \
+# Monitor queue depths until empty (using credentials from temp file)
+curl -u "midaz_admin:$(cat /tmp/mq_password.txt)" \
   https://<old-broker-endpoint>:15671/api/queues | jq '.[] | {name, messages}'
 ```
 
@@ -114,11 +121,15 @@ Re-enable incoming traffic to your Midaz application using the same method you u
 kubectl logs -l app=midaz-app | grep -i rabbitmq
 
 # Verify messages are being processed on new cluster
-curl -u $MQ_USER:$MQ_PASSWORD \
+curl -u "midaz_admin:$(cat /tmp/mq_password.txt)" \
   https://<new-cluster-endpoint>:15671/api/queues | jq '.[] | {name, messages}'
+
+# Clean up: remove temporary password file after verification
+rm -f /tmp/mq_password.txt
+history -c  # Optional: clear shell history if password was accidentally exposed
 ```
 
-### Step 8: Destroy Old Single Instance Broker (After Stabilization)
+### Step 8: Destroy Old Single-Instance Broker (After Stabilization)
 
 **Purpose:** Clean up the old broker after confirming the new cluster is stable.
 
@@ -195,7 +206,7 @@ host_instance_type = "mq.m5.large"  # REQUIRED: mq.t3.* not supported
 3. **engine_type**: Must be `RabbitMQ` (ActiveMQ does not support cluster mode)
 4. **VPC**: Must have 2-3 private subnets in DIFFERENT availability zones
 
-### Step 4: Review Terraform Plan
+### Step 2: Review Terraform Plan
 
 ```bash
 cd examples/aws/amazonmq
@@ -210,7 +221,7 @@ terraform plan -var-file=midaz.tfvars
 
 **Verify the plan shows resource replacement, not just update.**
 
-### Step 5: Apply Terraform
+### Step 3: Apply Terraform
 
 ```bash
 terraform apply -var-file=midaz.tfvars
@@ -220,7 +231,7 @@ terraform apply -var-file=midaz.tfvars
 
 | Phase | Duration |
 |-------|----------|
-| Destroy single instance broker | ~10 seconds |
+| Destroy single-instance broker | ~10 seconds |
 | Security group cleanup | ~1 minute |
 | Create cluster broker | **~10 minutes** |
 | **Total upgrade time** | **~11-12 minutes** |
@@ -237,37 +248,42 @@ After:  amqps://b-yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy.mq.us-east-2.on.aws:5671
 
 You **must** update your application configuration with the new endpoint after the upgrade completes.
 
-### Step 6: Retrieve New Credentials and Endpoint
+### Step 4: Retrieve New Credentials and Endpoint
 
 ```bash
 # Get new broker endpoint
-terraform output broker_primary_endpoint
+terraform output broker_first_endpoint
 
-# Get new password from Secrets Manager
+# Retrieve password securely to a temporary file (not stdout/shell history)
+umask 077
 aws secretsmanager get-secret-value \
   --secret-id "midaz-mq-cluster/amazonmq-password" \
-  --query SecretString --output text
+  --query SecretString --output text --no-cli-pager > /tmp/mq_password.txt
+chmod 600 /tmp/mq_password.txt
+
+# Clean up after use
+# rm -f /tmp/mq_password.txt && history -c
 ```
 
-### Step 7: Setup Queues on New Broker
+### Step 5: Setup Queues on New Broker
 
 Recreate your queues on the new cluster:
 
 ```bash
-# Using RabbitMQ Management API
-curl -u $MQ_USER:$MQ_PASSWORD -X PUT \
+# Using RabbitMQ Management API (credentials from temp file)
+curl -u "midaz_admin:$(cat /tmp/mq_password.txt)" -X PUT \
   https://<new-broker-endpoint>:15671/api/queues/%2F/your-queue-name \
   -H "content-type: application/json" \
   -d '{"durable": true}'
 ```
 
-### Step 8: Update Application Configuration
+### Step 6: Update Application Configuration
 
 Update your application's Helm values with the new cluster endpoint (broker host), then redeploy.
 
 Your application must support **automatic reconnection** for cluster mode. During maintenance or failover, connections will be severed and need to be re-established.
 
-### Step 9: Re-enable Traffic
+### Step 7: Re-enable Traffic
 
 ```bash
 # Scale application back up
@@ -276,14 +292,14 @@ kubectl scale deployment midaz-app --replicas=3
 # Or re-enable load balancer/ingress
 ```
 
-### Step 10: Verify Operation
+### Step 8: Verify Operation
 
 ```bash
 # Check application logs for successful connections
 kubectl logs -l app=midaz-app | grep -i rabbitmq
 
 # Verify messages are being processed
-curl -u $MQ_USER:$MQ_PASSWORD \
+curl -u "midaz_admin:$(cat /tmp/mq_password.txt)" \
   https://<new-broker-endpoint>:15671/api/queues | jq '.[] | {name, messages}'
 ```
 
@@ -297,11 +313,11 @@ curl -u $MQ_USER:$MQ_PASSWORD \
 2. Debug the issue first
 3. If you must rollback:
    ```bash
-   # Revert tfvars to single instance
+   # Revert tfvars to single-instance
    deployment_mode    = "SINGLE_INSTANCE"
    host_instance_type = "mq.t3.micro"
    
-   # Apply - WARNING: This destroys the cluster and creates a new single instance
+   # Apply - WARNING: This destroys the cluster and creates a new single-instance
    terraform apply -var-file=midaz.tfvars
    ```
 
