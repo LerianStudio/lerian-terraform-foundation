@@ -1,4 +1,22 @@
-# Midaz Terraform Foundation Changelog
+# Midaz-terraform-foundation Changelog
+
+## [1.5.0](https://github.com/LerianStudio/midaz-terraform-foundation/releases/tag/v1.5.0)
+
+- Features:
+  - Added support for AmazonMQ cluster mode.
+  - Upgraded documentation to include AmazonMQ cluster mode support.
+
+- Fixes:
+  - Addressed feedback from CodeRabbit review.
+
+- Improvements:
+  - Reorganized AmazonMQ documentation into a dedicated docs folder.
+
+Contributors: @ferr3ira-gabriel, @ferr3ira.gabriel
+
+[Compare changes](https://github.com/LerianStudio/midaz-terraform-foundation/compare/v1.4.0...v1.5.0)
+
+---
 
 ## [1.4.0](https://github.com/LerianStudio/midaz-terraform-foundation/releases/tag/v1.4.0)
 
@@ -87,3 +105,4 @@
   - Standardized naming conventions for infrastructure components.
 
 [View all changes](https://github.com/LerianStudio/midaz-terraform-foundation/commits/v1.0.0)
+
