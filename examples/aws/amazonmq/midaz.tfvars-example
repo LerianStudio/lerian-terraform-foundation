@@ -7,7 +7,7 @@
 #
 # IMPORTANT: Changing deployment_mode from CLUSTER_MULTI_AZ to SINGLE_INSTANCE
 # (or vice versa) will cause the broker to be DESTROYED and RECREATED.
-# See UPGRADE-GUIDE.md for migration procedures.
+# See docs/UPGRADE-GUIDE.md for migration procedures.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -55,7 +55,7 @@ host_instance_type = "mq.m5.large"
 # Instance types: mq.m5.large+ recommended (mq.t3.* supported for dev/test only)
 #
 # WARNING: Migrating to/from CLUSTER_MULTI_AZ causes RESOURCE RECREATION!
-# See UPGRADE-GUIDE.md for migration procedure.
+# See docs/UPGRADE-GUIDE.md for migration procedure.
 # -----------------------------------------------------------------------------
 # deployment_mode    = "SINGLE_INSTANCE"
 # engine_type        = "RabbitMQ"
