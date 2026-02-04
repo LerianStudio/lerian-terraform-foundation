@@ -17,3 +17,9 @@ data "aws_subnets" "private" {
     Type = "private"
   }
 }
+
+# Get detailed information for each private subnet (including availability zone)
+data "aws_subnet" "private" {
+  for_each = toset(data.aws_subnets.private.ids)
+  id       = each.value
+}

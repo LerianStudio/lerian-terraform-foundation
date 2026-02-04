@@ -51,5 +51,8 @@ Thumbs.db
 node_modules
 package-lock.json
 
-# Plans and documentation (local only)
-docs/
+# Plans and documentation (local only - root level)
+/docs/
+
+# Beads issue tracker (local only)
+.beads/

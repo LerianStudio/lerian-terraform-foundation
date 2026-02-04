@@ -27,3 +27,13 @@ output "mq_password_secret_arn" {
   description = "The ARN of the secret containing the MQ admin password."
   value       = aws_secretsmanager_secret.mq_password.arn
 }
+
+output "broker_first_endpoint" {
+  description = "The first endpoint from aws_mq_broker.main.instances[0].endpoints[0]. Note: For RabbitMQ clusters, there is no stable primary - ordering is not guaranteed. Use broker_endpoints for the full list."
+  value       = try(aws_mq_broker.main.instances[0].endpoints[0], null)
+}
+
+output "is_cluster_mode" {
+  description = "Whether the broker is deployed in cluster mode (CLUSTER_MULTI_AZ)."
+  value       = var.deployment_mode == "CLUSTER_MULTI_AZ"
+}
