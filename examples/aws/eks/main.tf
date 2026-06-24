@@ -150,7 +150,7 @@ module "eks" {
 
       labels = {
         Environment = lower(var.environment)
-        GithubRepo  = "midaz-terraform-foundation"
+        GithubRepo  = "lerian-terraform-foundation"
       }
 
       metadata_options = {

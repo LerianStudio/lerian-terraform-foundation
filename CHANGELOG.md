@@ -1,6 +1,6 @@
-# Midaz-terraform-foundation Changelog
+# Lerian-terraform-foundation Changelog
 
-## [1.5.0](https://github.com/LerianStudio/midaz-terraform-foundation/releases/tag/v1.5.0)
+## [1.5.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.5.0)
 
 - Features:
   - Added support for AmazonMQ cluster mode.
@@ -14,30 +14,30 @@
 
 Contributors: @ferr3ira-gabriel, @ferr3ira.gabriel
 
-[Compare changes](https://github.com/LerianStudio/midaz-terraform-foundation/compare/v1.4.0...v1.5.0)
+[Compare changes](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.4.0...v1.5.0)
 
 ---
 
-## [1.4.0](https://github.com/LerianStudio/midaz-terraform-foundation/releases/tag/v1.4.0)
+## [1.4.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.4.0)
 
 - **Features:**
   - Updated AWS instance types to newer generation (m7g) and added disclaimer for instance type selection.
 
-[Compare changes](https://github.com/LerianStudio/midaz-terraform-foundation/compare/v1.3.0...v1.4.0)
+[Compare changes](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.3.0...v1.4.0)
 
 ---
 
-## [1.3.0](https://github.com/LerianStudio/midaz-terraform-foundation/releases/tag/v1.3.0)
+## [1.3.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.3.0)
 
 - **Features:**
   - Added AWS Load Balancer Controller support for EKS clusters.
   - Improved EKS configuration with additional security and networking options.
 
-[Compare changes](https://github.com/LerianStudio/midaz-terraform-foundation/compare/v1.2.0...v1.3.0)
+[Compare changes](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.2.0...v1.3.0)
 
 ---
 
-## [1.2.0](https://github.com/LerianStudio/midaz-terraform-foundation/releases/tag/v1.2.0)
+## [1.2.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.2.0)
 
 - **Features:**
   - Added DocumentDB infrastructure module for MongoDB-compatible database deployments.
@@ -46,11 +46,11 @@ Contributors: @ferr3ira-gabriel, @ferr3ira.gabriel
 - **Improvements:**
   - Updated AWS EKS Terraform module to v21.0 with renamed parameters.
 
-[Compare changes](https://github.com/LerianStudio/midaz-terraform-foundation/compare/v1.1.0...v1.2.0)
+[Compare changes](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.1.0...v1.2.0)
 
 ---
 
-## [1.1.0](https://github.com/LerianStudio/midaz-terraform-foundation/releases/tag/v1.1.0)
+## [1.1.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.1.0)
 
 - **Features:**
   - Created AmazonMQ module for RabbitMQ broker deployments.
@@ -65,20 +65,20 @@ Contributors: @ferr3ira-gabriel, @ferr3ira.gabriel
   - Excluded audit logging for RabbitMQ vulnerability in tfsec.
   - Removed unusable parameters from modules.
 
-[Compare changes](https://github.com/LerianStudio/midaz-terraform-foundation/compare/v1.0.2...v1.1.0)
+[Compare changes](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.0.2...v1.1.0)
 
 ---
 
-## [1.0.2](https://github.com/LerianStudio/midaz-terraform-foundation/releases/tag/v1.0.2)
+## [1.0.2](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.0.2)
 
 - **Fixes:**
   - Fixed small issues on AWS template configurations.
 
-[Compare changes](https://github.com/LerianStudio/midaz-terraform-foundation/compare/v1.0.1...v1.0.2)
+[Compare changes](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.0.1...v1.0.2)
 
 ---
 
-## [1.0.1](https://github.com/LerianStudio/midaz-terraform-foundation/releases/tag/v1.0.1)
+## [1.0.1](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.0.1)
 
 - **Fixes:**
   - Updated deploy script and infrastructure configurations.
@@ -86,11 +86,11 @@ Contributors: @ferr3ira-gabriel, @ferr3ira.gabriel
 - **Improvements:**
   - Updated GKE setup for ARM compatibility.
 
-[Compare changes](https://github.com/LerianStudio/midaz-terraform-foundation/compare/v1.0.0...v1.0.1)
+[Compare changes](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.0.0...v1.0.1)
 
 ---
 
-## [1.0.0](https://github.com/LerianStudio/midaz-terraform-foundation/releases/tag/v1.0.0)
+## [1.0.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.0.0)
 
 - **Features:**
   - Initial release of Midaz Terraform Foundation.
@@ -104,5 +104,5 @@ Contributors: @ferr3ira-gabriel, @ferr3ira.gabriel
   - Enhanced security configurations across all cloud providers.
   - Standardized naming conventions for infrastructure components.
 
-[View all changes](https://github.com/LerianStudio/midaz-terraform-foundation/commits/v1.0.0)
+[View all changes](https://github.com/LerianStudio/lerian-terraform-foundation/commits/v1.0.0)
 
