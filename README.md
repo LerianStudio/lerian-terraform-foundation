@@ -385,5 +385,5 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 For support, please:
 1. Check the component-specific README
-2. Search existing [issues](https://github.com/LerianStudio/midaz-terraform-foundation/issues)
+2. Search existing [issues](https://github.com/LerianStudio/lerian-terraform-foundation/issues)
 3. Create a new issue if needed
