@@ -2,6 +2,24 @@
 
 ## [1.5.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.5.0)
 
+Features:
+- Added support for AmazonMQ cluster mode.
+- Upgraded documentation to include details on AmazonMQ cluster mode.
+
+Fixes:
+- Addressed feedback from CodeRabbit review to improve code quality.
+
+Improvements:
+- Reorganized AmazonMQ documentation into a dedicated docs folder for better structure and accessibility.
+
+Contributors: @ferr3ira-gabriel, @ferr3ira.gabriel
+
+[Compare changes](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.4.0...v1.5.0)
+
+---
+
+## [1.5.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.5.0)
+
 - Features:
   - Added support for AmazonMQ cluster mode.
   - Upgraded documentation to include AmazonMQ cluster mode support.
