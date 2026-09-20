@@ -200,20 +200,30 @@ variable "transit_encryption_enabled" {
 }
 
 variable "transit_encryption_mode" {
-  description = "Transit encryption mode: \"preferred\" accepts both TLS and plaintext clients, \"required\" accepts TLS only. Both environment examples ship \"required\", because this cache is created LOCKED before any hub pod points at it — see the note on auth_token_enabled. The default stays \"preferred\" only as the module-wide inherited value for an environment nobody has written an example for."
+  description = "Transit encryption mode: \"preferred\" accepts both TLS and plaintext clients, \"required\" accepts TLS only. Defaults to \"required\", unlike the donor root: this cache is created LOCKED before any hub pod points at it (see auth_token_enabled), so the donor's looser default would only serve a first-apply lockout that cannot happen here. \"preferred\" remains selectable for a local or dev cache, and is refused outright in stg and prd."
   type        = string
-  default     = "preferred"
+  default     = "required"
 
   validation {
     condition     = contains(["preferred", "required"], var.transit_encryption_mode)
     error_message = "The transit_encryption_mode must be either 'preferred' or 'required'."
   }
+
+  validation {
+    condition     = var.transit_encryption_mode == "required" || !contains(["stg", "prd"], var.environment)
+    error_message = "transit_encryption_mode must be \"required\" when environment is stg or prd. \"preferred\" is not weaker TLS, it is OPTIONAL TLS: the listener keeps accepting plaintext clients, so any pod that reaches this security group can read and write per-tenant rate-limiter state in the clear."
+  }
 }
 
 variable "auth_token_enabled" {
-  description = "Make ElastiCache ENFORCE the auth token. The token is generated and stored in Secrets Manager either way; this only decides whether the server requires it. THERE IS NO SAFE MIDDLE STATE, in either direction: the hub attaches AUTH whenever STREAMING_HUB_REDIS_PASSWORD is non-empty (internal/bootstrap/ratelimit.go), and this module sets auth_token to null whenever this is false, so a projected password against an unenforced server makes the client AUTH to a server that has none. Both environment examples therefore ship true, applied BEFORE any hub pod is pointed at this cache — there is no live consumer to lock out at that moment, which is exactly why locking it from birth is free."
+  description = "Make ElastiCache ENFORCE the auth token. The token is generated and stored in Secrets Manager either way; this only decides whether the server requires it. THERE IS NO SAFE MIDDLE STATE, in either direction: the hub attaches AUTH whenever STREAMING_HUB_REDIS_PASSWORD is non-empty (internal/bootstrap/ratelimit.go), and this module sets auth_token to null whenever this is false, so a projected password against an unenforced server makes the client AUTH to a server that has none. Defaults to true, unlike the donor root, and is refused as false in stg and prd: the cache is applied BEFORE any hub pod is pointed at it, so there is no live consumer to lock out and no reason to pass through an unauthenticated state. Recovery from a bad token is to ROTATE it, not to disable enforcement on a multi-tenant cache."
   type        = bool
-  default     = false
+  default     = true
+
+  validation {
+    condition     = var.auth_token_enabled || !contains(["stg", "prd"], var.environment)
+    error_message = "auth_token_enabled must be true when environment is stg or prd. Without it ElastiCache sets no auth token at all, so any pod that reaches this security group reads and writes per-tenant rate-limiter state with no credential."
+  }
 }
 
 ################################################################################

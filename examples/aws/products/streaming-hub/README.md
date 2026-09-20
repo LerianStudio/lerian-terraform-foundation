@@ -5,8 +5,8 @@ tenant to webhooks, SQS, RabbitMQ and EventBridge.
 
 | Root | What it provisions | Mode |
 |---|---|---|
-| `postgres` | The hub's only mandatory datastore | `dedicated` |
-| `valkey` | Rate-limiter counters, one per environment | `dedicated` |
+| `postgres` | Subscriptions, deliveries, idempotency. **Mandatory** | `dedicated` |
+| `valkey` | Rate-limiter counters. **Mandatory** since 2.x | `dedicated` |
 | `msk` | Resolves the Kafka the producers publish to | **`shared`** |
 | `secrets` | IRSA for the tenant roster listing | n/a |
 

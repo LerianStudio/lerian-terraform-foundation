@@ -102,11 +102,21 @@ connects at the 2.x promotion, by which time the token is already projected as
 Nothing in the product resists it either:
 
 - `STREAMING_HUB_REDIS_TLS` **defaults to true** in the hub, and a hardened
-  environment (staging, production) refuses to boot with it false — which is
-  also why `transit_encryption_enabled` carries a validation rejecting `false`
-  in `stg` and `prd`.
+  environment (staging, production) refuses to boot with it false.
 - `STREAMING_HUB_REDIS_PASSWORD` is a key the chart emits when set, kept out of
   the ConfigMap because it is credential material.
+
+So the locked posture is enforced twice over, not just documented. All three
+security variables **default** to the locked values — `transit_encryption_enabled`
+true, `transit_encryption_mode` `"required"`, `auth_token_enabled` true — which is
+where this root departs from the gateway's, and each carries a validation
+**refusing** the loose value when `environment` is `stg` or `prd`. The defaults
+mean omitting them yields a locked cache; the validations mean setting them wrong
+in a hardened environment fails the plan rather than shipping plaintext with no
+credential. `"preferred"` and an unenforced token remain reachable in `dev`, by
+writing them explicitly.
+
+Recovery from a bad token is to **rotate** it, not to disable enforcement.
 
 `STREAMING_HUB_REDIS_CA_CERT` stays empty on purpose: ElastiCache in-transit
 encryption presents a publicly trusted certificate, which the Go system pool
