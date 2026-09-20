@@ -127,9 +127,10 @@ output "subnet_group_name" {
 # Helm handoff
 #
 # The hub reads exactly four keys for this cache, and they are the
-# STREAMING_HUB_REDIS_* block — NOT the MULTI_TENANT_REDIS_* one. The two only
-# look alike: MULTI_TENANT_REDIS_* addresses the platform tenant-manager's
-# lifecycle bus, and the boot refuses this stack's cache being pointed there.
+# STREAMING_HUB_REDIS_* block — NOT the MULTI_TENANT_REDIS_* one, which addresses
+# the platform tenant-manager's lifecycle bus. Nothing at boot compares the two
+# addresses; wiring this output to the wrong one boots clean and silently shares
+# a keyspace. Keeping them apart is a Lerian decision, enforced by nobody.
 #
 #   STREAMING_HUB_REDIS_ADDRESS   "host:port". Required on every role, because
 #     every role mounts the /v1 control plane. A blank one fails the boot.

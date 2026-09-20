@@ -18,11 +18,13 @@ tenant to webhooks, SQS, RabbitMQ and EventBridge.
 
 ## Four things that bite
 
-**`valkey` must be `dedicated`, and it is not the control plane's.** The 2.x line
-counts per-tenant rate limits in it, every role mounts `/v1` so every pod needs it,
-and the boot refuses both a blank `STREAMING_HUB_REDIS_ADDRESS` and one pointed at
-`MULTI_TENANT_REDIS_HOST` — that block addresses the tenant-manager's lifecycle bus,
-not a counter store. The 1.x claim that the hub needs no Redis is no longer true.
+**`valkey` must be `dedicated`, and nothing checks that it is.** The 2.x line counts
+per-tenant rate limits in it, every role mounts `/v1` so every pod needs it, and the
+boot refuses a blank `STREAMING_HUB_REDIS_ADDRESS`. It refuses nothing else: pointing
+it at `MULTI_TENANT_REDIS_HOST` — the tenant-manager's lifecycle bus, not a counter
+store — boots clean and silently shares a keyspace. The warning against it is prose
+inside an error message, not a gate. The 1.x claim that the hub needs no Redis is no
+longer true.
 
 **`msk` must be `shared`.** The hub subscribes by regex — `^lerian\.streaming\.<app>$`
 — so it can only see what a producer wrote to the *same cluster*. A dedicated broker

@@ -10,9 +10,16 @@
 #
 # WHAT USES IT: the hub's per-tenant rate limiters count in this cache. Every
 # role mounts the /v1 control plane, so every pod needs it, and the boot REFUSES
-# a blank STREAMING_HUB_REDIS_ADDRESS (ErrMissingRedisAddress). It must be the
-# hub's OWN cache: pointing it at the control plane's MULTI_TENANT_REDIS_HOST is
-# refused too.
+# a blank STREAMING_HUB_REDIS_ADDRESS (ErrMissingRedisAddress).
+#
+# It must be the hub's OWN cache and not the tenant-manager's lifecycle bus
+# (MULTI_TENANT_REDIS_HOST). NOTHING ENFORCES THAT AT BOOT: the only check is the
+# empty-address one above, and the "do NOT point it at MULTI_TENANT_REDIS_HOST"
+# sentence lives INSIDE the text of ErrMissingRedisAddress — it is advice printed
+# when a different condition fails, not a gate. Two addresses that happen to be
+# equal boot clean. The separation is a Lerian decision this stack implements by
+# creating a separate replication group; keeping them apart is on whoever writes
+# the values.
 #
 #   mode = "dedicated"  -> creates streaming-hub-{env}-valkey, its security group, its
 #                          Secrets Manager auth token. This is the default.

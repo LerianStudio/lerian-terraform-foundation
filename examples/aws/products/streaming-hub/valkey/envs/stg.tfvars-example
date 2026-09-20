@@ -65,28 +65,38 @@ multi_az_enabled           = false
 snapshot_retention_limit   = 0
 
 ################################################################################
-# Security — the first-apply posture, and what it costs
+# Security — LOCKED FROM THE FIRST APPLY, and there is no other safe way
 #
 # "preferred" is not weaker TLS, it is OPTIONAL TLS: the listener still accepts
-# a plaintext client. With auth_token_enabled = false on top, any pod that can
-# reach this security group reads and writes the cache with no credential.
+# a plaintext client. With no auth token on top, any pod that can reach this
+# security group reads and writes the rate-limiter state of a multi-tenant
+# service with no credential. Neither is a posture worth passing through.
 #
-# It is kept here only so the FIRST apply cannot lock out a release nobody has
-# wired yet. Unlike the gateway, nothing in the hub blocks tightening it:
-# STREAMING_HUB_REDIS_TLS already defaults to true and a hardened environment
-# refuses to boot with it false, and STREAMING_HUB_REDIS_PASSWORD is a key the
-# chart emits when set.
+# THERE IS NO SAFE INTERMEDIATE STATE, so there is no "apply loose, tighten
+# later" path to take:
 #
-# TO TIGHTEN (prd already does, see prd.tfvars-example): project
-# streaming-hub-stg-valkey/auth-token as STREAMING_HUB_REDIS_PASSWORD in the
-# release FIRST, then set the two lines below to "required" and true. In that
-# order — enforcing the token before the release can read it takes the control
-# plane's rate limiters down.
+#   - this module sets auth_token to null whenever auth_token_enabled is false
+#     (_modules/valkey-elasticache/main.tf, the auth_token argument);
+#   - the hub attaches AUTH whenever STREAMING_HUB_REDIS_PASSWORD is non-empty
+#     (internal/bootstrap/ratelimit.go).
+#
+# So projecting the password against an unenforced server makes the client AUTH
+# to a server that has none, and enforcing the token before the release can read
+# it locks every pod out. Both orderings break the limiter.
+#
+# Locking from birth costs nothing because there is no consumer yet: this cache
+# is applied BEFORE any hub pod is pointed at it, and the hub only connects at
+# the 2.x promotion, by which time the token is already projected as
+# STREAMING_HUB_REDIS_PASSWORD. No tighten window has to exist.
+#
+# Nothing in the hub resists it either: STREAMING_HUB_REDIS_TLS already defaults
+# to true and a hardened environment refuses to boot with it false, and the
+# chart emits STREAMING_HUB_REDIS_PASSWORD when set.
 ################################################################################
 
 transit_encryption_enabled = true
-transit_encryption_mode    = "preferred"
-auth_token_enabled         = false
+transit_encryption_mode    = "required"
+auth_token_enabled         = true
 
 maintenance_window = "mon:00:00-mon:03:00"
 apply_immediately  = false

@@ -70,7 +70,7 @@ multi_az_enabled           = false
 snapshot_retention_limit   = 0
 
 ################################################################################
-# Security — BOTH SWITCHES TIGHTENED, and there is an ORDER to respect
+# Security — LOCKED FROM THE FIRST APPLY, same as stg
 #
 # "preferred" is not weaker TLS, it is OPTIONAL TLS: the listener accepts a
 # plaintext client. Combined with no auth token, any pod that can reach this
@@ -78,14 +78,22 @@ snapshot_retention_limit   = 0
 # state of a multi-tenant service with no credential at all. That is the posture
 # this file refuses to inherit, and the same call the gateway's prd file makes.
 #
-# Nothing in the hub blocks it: STREAMING_HUB_REDIS_TLS already defaults to true
-# and a hardened environment refuses to boot with it false, and
-# STREAMING_HUB_REDIS_PASSWORD is a key the chart emits when set.
+# THERE IS NO SAFE INTERMEDIATE STATE, so there is no "apply loose, tighten
+# later" path to take:
 #
-# PRECONDITION, and it is load-bearing: the release must already project
-# streaming-hub-prd-valkey/auth-token as STREAMING_HUB_REDIS_PASSWORD before
-# this applies. Enforcing the token first takes the control plane's rate
-# limiters down — every role mounts /v1, so that is every pod.
+#   - this module sets auth_token to null whenever auth_token_enabled is false
+#     (_modules/valkey-elasticache/main.tf, the auth_token argument);
+#   - the hub attaches AUTH whenever STREAMING_HUB_REDIS_PASSWORD is non-empty
+#     (internal/bootstrap/ratelimit.go).
+#
+# So projecting the password against an unenforced server makes the client AUTH
+# to a server that has none, and enforcing the token before the release can read
+# it locks every pod out. Both orderings break the limiter.
+#
+# Locking from birth costs nothing because there is no consumer yet: this cache
+# is applied BEFORE any hub pod is pointed at it, and the hub only connects at
+# the 2.x promotion, by which time the token is already projected as
+# STREAMING_HUB_REDIS_PASSWORD.
 ################################################################################
 
 transit_encryption_enabled = true

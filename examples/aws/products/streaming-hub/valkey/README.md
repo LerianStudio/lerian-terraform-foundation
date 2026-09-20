@@ -41,8 +41,14 @@ The hub's per-tenant rate limiters count in this Valkey. Every role mounts the
 disabled.
 
 It must be the hub's **own** cache. `MULTI_TENANT_REDIS_*` is a different block
-addressing the platform tenant-manager's lifecycle bus, and pointing this one at
-it is refused at boot.
+addressing the platform tenant-manager's lifecycle bus.
+
+**Nothing enforces that at boot.** The only rate-limit check is the empty-address
+one; the "do NOT point it at `MULTI_TENANT_REDIS_HOST`" sentence lives inside the
+*text* of `ErrMissingRedisAddress`, printed when a different condition fails. Two
+addresses that happen to be equal boot clean and silently share a keyspace.
+Keeping them apart is a Lerian decision — this stack implements it by creating a
+separate replication group, and whoever writes the values has to honour it.
 
 > The product README says the hub needs no Valkey. That was true of the 1.x
 > line, where cron singleton-ing used `pg_try_advisory_xact_lock` and
@@ -66,30 +72,41 @@ This is the **opposite** of `plugin-access-manager`, whose template appends the
 port itself, so a `host:port` value renders as `host:port:port`. Read the
 consuming template before copying a `helm_values` block between products.
 
-## The two knobs that must move together
+## Locked from the first apply, because there is no safe middle
 
-`transit_encryption_mode` and `auth_token_enabled` default loose —
-`"preferred"` and `false` — so a **first** apply cannot lock out a release
-nobody has wired yet. That is the only reason. Unlike the gateway, nothing in
-this product blocks tightening them:
-
-- `STREAMING_HUB_REDIS_TLS` **defaults to true** in the hub, and a hardened
-  environment (staging, production) refuses to boot with it false.
-- `STREAMING_HUB_REDIS_PASSWORD` is a key the chart emits when set, kept out of
-  the ConfigMap because it is credential material.
+Both environment examples ship `transit_encryption_mode = "required"` and
+`auth_token_enabled = true`. Not as a later hardening step — as the state this
+cache is **created** in.
 
 `"preferred"` is worth stating plainly: it is not weaker TLS, it is **optional**
 TLS — the listener still accepts a plaintext client. With no auth token on top,
 any pod that can reach this security group reads and writes the rate-limiter
 state of a multi-tenant service with no credential.
 
-**The order is load-bearing.** Project `streaming-hub-{env}-valkey/auth-token`
-as `STREAMING_HUB_REDIS_PASSWORD` in the release **first**, then flip the two
-tfvars lines. Enforcing the token before the release can read it takes the
-control plane down on every pod.
+There is no "apply loose, tighten later" path, because **both orderings break
+the limiter**:
 
-`envs/prd.tfvars-example` ships tightened; `envs/stg.tfvars-example` ships at
-the first-apply posture with the upgrade written out.
+- this module sets `auth_token` to `null` whenever `auth_token_enabled` is
+  false, so an enforced-password client meets a server with no password set;
+- the hub attaches AUTH whenever `STREAMING_HUB_REDIS_PASSWORD` is non-empty
+  (`internal/bootstrap/ratelimit.go`), so it cannot be told to skip it.
+
+Project the password first and the client AUTHs to a server that has none.
+Enforce the token first and every pod is locked out — every role mounts `/v1`.
+
+Locking from birth costs nothing because **there is no consumer yet**: this
+stack is applied before any hub pod is pointed at the cache, and the hub only
+connects at the 2.x promotion, by which time the token is already projected as
+`STREAMING_HUB_REDIS_PASSWORD`. No tighten window has to exist.
+
+Nothing in the product resists it either:
+
+- `STREAMING_HUB_REDIS_TLS` **defaults to true** in the hub, and a hardened
+  environment (staging, production) refuses to boot with it false — which is
+  also why `transit_encryption_enabled` carries a validation rejecting `false`
+  in `stg` and `prd`.
+- `STREAMING_HUB_REDIS_PASSWORD` is a key the chart emits when set, kept out of
+  the ConfigMap because it is credential material.
 
 `STREAMING_HUB_REDIS_CA_CERT` stays empty on purpose: ElastiCache in-transit
 encryption presents a publicly trusted certificate, which the Go system pool

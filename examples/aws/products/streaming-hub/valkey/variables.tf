@@ -189,13 +189,18 @@ variable "snapshot_retention_limit" {
 ################################################################################
 
 variable "transit_encryption_enabled" {
-  description = "Enable in-transit encryption on the replication group."
+  description = "Enable in-transit encryption on the replication group. It cannot be false in stg or prd: the hub REFUSES to boot with STREAMING_HUB_REDIS_TLS=false in a hardened environment (internal/bootstrap/config_validation.go, ErrHardenedEnvBypass), so a plaintext-only cache there is a cache no hub pod can legally use."
   type        = bool
   default     = true
+
+  validation {
+    condition     = var.transit_encryption_enabled || !contains(["stg", "prd"], var.environment)
+    error_message = "transit_encryption_enabled must be true when environment is stg or prd. The hub refuses to boot with STREAMING_HUB_REDIS_TLS=false in a hardened environment, so a cache without in-transit encryption could never be reached from one."
+  }
 }
 
 variable "transit_encryption_mode" {
-  description = "Transit encryption mode: \"preferred\" accepts both TLS and plaintext clients, \"required\" accepts TLS only. The default stays \"preferred\" so a first apply cannot lock out a client nobody has wired yet, but the hub itself is ready for \"required\" in every environment: STREAMING_HUB_REDIS_TLS defaults to TRUE (internal/bootstrap/config_load.go, GetenvBoolOrDefault(envRedisTLS, true)) and a hardened environment REFUSES to boot with it false. Tightening is a tfvars change, not a chart change."
+  description = "Transit encryption mode: \"preferred\" accepts both TLS and plaintext clients, \"required\" accepts TLS only. Both environment examples ship \"required\", because this cache is created LOCKED before any hub pod points at it — see the note on auth_token_enabled. The default stays \"preferred\" only as the module-wide inherited value for an environment nobody has written an example for."
   type        = string
   default     = "preferred"
 
@@ -206,7 +211,7 @@ variable "transit_encryption_mode" {
 }
 
 variable "auth_token_enabled" {
-  description = "Make ElastiCache ENFORCE the auth token. The token is generated and stored in Secrets Manager either way; this only decides whether the server requires it. The default stays false so a first apply cannot lock out a client nobody has wired yet. Turning it on REQUIRES the release to project streaming-hub-{env}-valkey/auth-token as STREAMING_HUB_REDIS_PASSWORD — the hub reads it (internal/bootstrap/config_load.go, envRedisPassword) and the chart emits it when set, so this is a values change and not a chart change."
+  description = "Make ElastiCache ENFORCE the auth token. The token is generated and stored in Secrets Manager either way; this only decides whether the server requires it. THERE IS NO SAFE MIDDLE STATE, in either direction: the hub attaches AUTH whenever STREAMING_HUB_REDIS_PASSWORD is non-empty (internal/bootstrap/ratelimit.go), and this module sets auth_token to null whenever this is false, so a projected password against an unenforced server makes the client AUTH to a server that has none. Both environment examples therefore ship true, applied BEFORE any hub pod is pointed at this cache — there is no live consumer to lock out at that moment, which is exactly why locking it from birth is free."
   type        = bool
   default     = false
 }
