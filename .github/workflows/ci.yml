@@ -53,6 +53,8 @@ jobs:
     # Install Terraform CLI
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_wrapper: false
 
     # Install TFLint for Terraform linting
     - name: Setup TFLint
