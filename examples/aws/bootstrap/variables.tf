@@ -8,6 +8,18 @@ variable "environment" {
   }
 }
 
+variable "extra_tags" {
+  description = "Additional tags merged with the standard Lerian tag set. Product, Environment, ManagedBy and Repository are reserved; Name remains resource-derived."
+  type        = map(string)
+  default     = {}
+  nullable    = false
+
+  validation {
+    condition     = length(setintersection(keys(var.extra_tags), ["Product", "Environment", "ManagedBy", "Repository"])) == 0
+    error_message = "extra_tags must not contain reserved keys: Product, Environment, ManagedBy or Repository."
+  }
+}
+
 variable "region" {
   description = "AWS region where the state bucket and the lock table are created. This value is written verbatim into the generated backend config, so every stack that consumes the backend must resolve its state in this region."
   type        = string
