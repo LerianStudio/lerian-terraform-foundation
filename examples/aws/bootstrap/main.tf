@@ -115,6 +115,7 @@ module "naming" {
   product     = "lerian"
   environment = var.environment
   component   = "tfstate"
+  extra_tags  = var.extra_tags
 }
 
 locals {

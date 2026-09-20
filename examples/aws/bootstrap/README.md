@@ -158,6 +158,7 @@ aws dynamodb describe-table --table-name lerian-tfstate-lock-dev \
 | ---------------------------------------- | ------------- | ------------------------------------------------------------ |
 | `environment`                            | — (required)  | `dev` \| `stg` \| `prd`                                      |
 | `region`                                 | `us-east-1`   | Written verbatim into the generated `.hcl`                   |
+| `extra_tags`                             | `{}`          | Additional tags for the state bucket and lock table         |
 | `kms_key_arn`                            | `""`          | Empty = SSE-S3 (AES256) + AWS managed DynamoDB key           |
 | `noncurrent_version_expiration_days`     | `90`          | Minimum 7 — this is the state recovery window                |
 | `abort_incomplete_multipart_upload_days` | `7`           | Cleans orphaned multipart parts                              |
@@ -172,7 +173,49 @@ bucket appends the account id — `lerian-tfstate-{env}-{account_id}` — resolv
 from `data.aws_caller_identity.current`. The DynamoDB table is only
 account+region scoped and needs no suffix. **Tags come from the naming module
 unchanged** (`Product=lerian`, `Environment`, `ManagedBy=terraform`,
-`Repository`, plus `Name`).
+`Repository`, plus `Name`), with `extra_tags` merged by the naming module.
+Use additional cost keys such as `CostCenter` and `Project`; preserve the standard
+keys above: `Product`, `Environment`, `ManagedBy` and `Repository` are rejected
+in `extra_tags`. `Name` is always derived from the bucket/table name, even if supplied
+in `extra_tags`.
+
+### Consuming the tag input
+
+Bootstrap in foundation **v1.9.3 and v1.10.0 does not declare `extra_tags`**. Consumers must
+first pin a published foundation release containing this change, then sync that
+release before supplying bootstrap cost tags. Do not add the input to a checkout
+still pinned to v1.9.3. In project-consignado, the pin is the default
+`LERIAN_FOUNDATION_REF` in `infra/sync.sh`; update the live version references in
+`infra/README.md` alongside it. Keep the existing backend, workspace, resource
+names and state addresses. Review the eventual plan for tag-only updates and no
+resource replacement before applying.
+
+An uncommitted foundation worktree cannot be consumed through that sync script:
+it clones/fetches Git refs, which omit working-tree edits. Local test runs can use
+this worktree directly; deployment consumption waits for an authorized release.
+
+EKS already passes `extra_tags` and node-group tags to the upstream managed-node
+launch templates. Their `tag_specifications` cover instances, volumes created
+at launch, and network interfaces. EKS owns the underlying ASGs; this root has no
+ASG `propagate_at_launch` setting. This does not tag existing resources or EBS
+volumes created later by the CSI driver. Changing launch-template tags can create
+a new template version and trigger a managed-node rolling update; do not treat
+an EKS tag rollout as necessarily free of node replacement.
+
+### Offline propagation tests
+
+With Terraform >= 1.7, initialize providers/modules without a backend and run:
+
+```bash
+terraform -chdir=examples/aws/bootstrap init -backend=false -input=false
+terraform -chdir=examples/aws/infra-base/eks init -backend=false -input=false
+python3 scripts/test-cost-tags.py
+```
+
+Run from the repository root. Providers are mocked and every test uses
+`command = plan`; no AWS calls or backend initialization occur. The EKS check inspects
+the actual nested launch-template resource plans, including per-group tag
+precedence, rather than a copy of the upstream merge expression.
 
 ---
 
