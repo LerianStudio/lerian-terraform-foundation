@@ -1,5 +1,20 @@
 # Lerian-terraform-foundation Changelog
 
+## [1.10.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.10.0)
+
+- **Features:**
+  - Added streaming-hub valkey root stack.
+
+- **Fixes:**
+  - Locked streaming-hub valkey from the first apply.
+  - Defaulted streaming-hub valkey to the locked posture.
+
+Contributors: @fred, @lerian-studio-midaz-push-bot[bot],
+
+[Compare changes](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.9.3...v1.10.0)
+
+---
+
 ## [1.9.3](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.9.3)
 
 - Fixes:
