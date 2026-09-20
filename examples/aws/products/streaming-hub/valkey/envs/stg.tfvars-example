@@ -1,0 +1,107 @@
+################################################################################
+# products/streaming-hub/valkey — stg
+#
+# One cache cluster on the smallest usable node. The hub counts per-tenant rate
+# limiter windows here; it is not a data store, and nothing in it survives a
+# failover the hub cannot rebuild by simply counting again.
+#
+# Copy to stg.tfvars before use (*.tfvars is gitignored, *.tfvars-example is not).
+################################################################################
+
+region      = "us-east-1"
+product     = "streaming-hub"
+environment = "stg"
+
+mode = "dedicated"
+
+# vpc_name         is derived -> lerian-stg-vpc        (infra-base/vpc)
+# eks_cluster_name is derived -> lerian-stg-eks        (infra-base/eks)
+# Both carry the "lerian" prefix on purpose: they belong to the infra-base
+# FOUNDATION, not to streaming-hub — and not to the shared datastore tier either,
+# which carries "shared".
+
+################################################################################
+# Ingress
+#
+# allow_private_subnet_cidr_ingress = true is what makes this stack appliable
+# BEFORE infra-base/eks exists: it authorises the Type=private subnet CIDRs,
+# which only depend on infra-base/vpc. The EKS node security group is looked up
+# on top of that and simply resolves to nothing until the cluster is created —
+# check "eks_node_security_group_resolved" warns while that is the case.
+#
+# allow_vpc_cidr_ingress is the module's VPC CIDR FALLBACK, applied only when
+# both allow lists resolve empty. False here so an empty allow list trips the
+# module's check "ingress_is_reachable" instead of quietly widening to a CIDR
+# that includes the public subnets.
+################################################################################
+
+allow_private_subnet_cidr_ingress      = true
+eks_node_security_group_lookup_enabled = true
+allow_vpc_cidr_ingress                 = false
+
+allowed_security_group_ids = []
+allowed_cidr_blocks        = []
+
+################################################################################
+# Engine and sizing — cache.t4g.micro, one cache cluster
+#
+# One cache cluster means no failover and no Multi-AZ: both require at least
+# two. It also means reader_endpoint comes back empty, which nothing reads —
+# the hub has no reader variable.
+#
+# The workload is fixed-window counters for three rate-limit tiers, not a cache
+# of anything expensive to recompute, so the smallest node is the right first
+# size. Raise it from measurement, not from the shape of the gateway's file.
+################################################################################
+
+engine_version         = "7.2"
+parameter_group_family = "valkey7"
+port                   = 6379
+
+node_type                  = "cache.t4g.micro"
+num_cache_clusters         = 1
+automatic_failover_enabled = false
+multi_az_enabled           = false
+snapshot_retention_limit   = 0
+
+################################################################################
+# Security — LOCKED FROM THE FIRST APPLY, and there is no other safe way
+#
+# "preferred" is not weaker TLS, it is OPTIONAL TLS: the listener still accepts
+# a plaintext client. With no auth token on top, any pod that can reach this
+# security group reads and writes the rate-limiter state of a multi-tenant
+# service with no credential. Neither is a posture worth passing through.
+#
+# THERE IS NO SAFE INTERMEDIATE STATE, so there is no "apply loose, tighten
+# later" path to take:
+#
+#   - this module sets auth_token to null whenever auth_token_enabled is false
+#     (_modules/valkey-elasticache/main.tf, the auth_token argument);
+#   - the hub attaches AUTH whenever STREAMING_HUB_REDIS_PASSWORD is non-empty
+#     (internal/bootstrap/ratelimit.go).
+#
+# So projecting the password against an unenforced server makes the client AUTH
+# to a server that has none, and enforcing the token before the release can read
+# it locks every pod out. Both orderings break the limiter.
+#
+# Locking from birth costs nothing because there is no consumer yet: this cache
+# is applied BEFORE any hub pod is pointed at it, and the hub only connects at
+# the 2.x promotion, by which time the token is already projected as
+# STREAMING_HUB_REDIS_PASSWORD. No tighten window has to exist.
+#
+# Nothing in the hub resists it either: STREAMING_HUB_REDIS_TLS already defaults
+# to true and a hardened environment refuses to boot with it false, and the
+# chart emits STREAMING_HUB_REDIS_PASSWORD when set.
+################################################################################
+
+transit_encryption_enabled = true
+transit_encryption_mode    = "required"
+auth_token_enabled         = true
+
+maintenance_window = "mon:00:00-mon:03:00"
+apply_immediately  = false
+
+extra_tags = {
+  Owner      = "devops"
+  CostCenter = "platform-stg"
+}

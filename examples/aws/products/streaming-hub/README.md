@@ -5,20 +5,26 @@ tenant to webhooks, SQS, RabbitMQ and EventBridge.
 
 | Root | What it provisions | Mode |
 |---|---|---|
-| `postgres` | The hub's only mandatory datastore | `dedicated` |
+| `postgres` | Subscriptions, deliveries, idempotency. **Mandatory** | `dedicated` |
+| `valkey` | Rate-limiter counters. **Mandatory** since 2.x | `dedicated` |
 | `msk` | Resolves the Kafka the producers publish to | **`shared`** |
 | `secrets` | IRSA for the tenant roster listing | n/a |
 
 ## What it does NOT need, measured
 
-- **No Valkey/Redis.** Removed deliberately: cron singleton-ing uses
-  `pg_try_advisory_xact_lock` and idempotency is a durable Postgres store, both so
-  a BYOC deployment need not run Redis.
 - **No DocumentDB, no S3, no KMS.** SQS, EventBridge and RabbitMQ appear in the
   dependency list as *customer-owned delivery sinks*, reached with credentials that
   arrive per subscription from the decrypted database config. Provision none of them.
 
-## Three things that bite
+## Four things that bite
+
+**`valkey` must be `dedicated`, and nothing checks that it is.** The 2.x line counts
+per-tenant rate limits in it, every role mounts `/v1` so every pod needs it, and the
+boot refuses a blank `STREAMING_HUB_REDIS_ADDRESS`. It refuses nothing else: pointing
+it at `MULTI_TENANT_REDIS_HOST` — the tenant-manager's lifecycle bus, not a counter
+store — boots clean and silently shares a keyspace. The warning against it is prose
+inside an error message, not a gate. The 1.x claim that the hub needs no Redis is no
+longer true.
 
 **`msk` must be `shared`.** The hub subscribes by regex — `^lerian\.streaming\.<app>$`
 — so it can only see what a producer wrote to the *same cluster*. A dedicated broker
