@@ -180,11 +180,16 @@ controller's service account (`eks.amazonaws.com/role-arn` annotation).
 Unlike the controllers above, the **EBS CSI driver is already installed** by this
 stack, as the `aws-ebs-csi-driver` addon, with its IRSA role wired on
 (`ebs_csi_role_arn`). What the cluster still cannot do is honour a
-PersistentVolumeClaim that names no class: EKS ships `gp2` without the
-`storageclass.kubernetes.io/is-default-class` annotation, and this stack adds
-nothing to replace it. A chart with a PVC therefore stays `Pending`
-indefinitely, and the reason is hard to see — the driver is there, the role is
-there, and the claim simply never binds.
+PersistentVolumeClaim that names no class: from EKS 1.30 on, `gp2` ships
+without the `storageclass.kubernetes.io/is-default-class` annotation, and this
+stack adds nothing to replace it. A chart with a PVC therefore stays `Pending`
+until a default class exists, and the reason is easy to miss — the driver is
+there, the role is there, and the claim simply never binds.
+
+`cluster_version` takes any version string and this stack sets no floor, so a
+cluster pinned below 1.30 still has `gp2` marked default. Applying the manifest
+below there would leave two default classes, which is not a state Kubernetes
+resolves for you: clear the annotation off `gp2` first.
 
 Nothing here creates it, because a StorageClass is a Kubernetes object and every
 stack in this repository configures the `aws` provider only. Apply it alongside
