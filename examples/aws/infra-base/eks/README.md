@@ -186,10 +186,14 @@ stack adds nothing to replace it. A chart with a PVC therefore stays `Pending`
 until a default class exists, and the reason is easy to miss — the driver is
 there, the role is there, and the claim simply never binds.
 
-`cluster_version` takes any version string and this stack sets no floor, so a
-cluster pinned below 1.30 still has `gp2` marked default. Applying the manifest
-below there would leave two default classes, which is not a state Kubernetes
-resolves for you: clear the annotation off `gp2` first.
+That is about the version a cluster was **created** at, not the one it runs
+now: a cluster created earlier and upgraded in place keeps the `gp2` default it
+was born with, and `cluster_version` takes any version string with no floor
+enforced here. Check `kubectl get sc` before applying the manifest below.
+Kubernetes allows more than one default and gives a classless PVC the most
+recently created one, so leaving `gp2` annotated makes the class a claim lands
+on a matter of creation order — clear the annotation off `gp2` so `gp3` is the
+only default.
 
 Nothing here creates it, because a StorageClass is a Kubernetes object and every
 stack in this repository configures the `aws` provider only. Apply it alongside
