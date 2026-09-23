@@ -175,6 +175,41 @@ controller's service account (`eks.amazonaws.com/role-arn` annotation).
 | [ExternalDNS](https://artifacthub.io/packages/helm/external-dns/external-dns) | Services/Ingresses should publish their hostnames into a Route53 hosted zone the client owns | `external_dns_role_arn` | `kube-system:external-dns` |
 | [cert-manager](https://artifacthub.io/packages/helm/cert-manager/cert-manager) | TLS certificates via Route53 DNS-01 | `cert_manager_role_arn` | `cert-manager:cert-manager` |
 
+### The default StorageClass
+
+Unlike the controllers above, the **EBS CSI driver is already installed** by this
+stack, as the `aws-ebs-csi-driver` addon, with its IRSA role wired on
+(`ebs_csi_role_arn`). What the cluster still cannot do is honour a
+PersistentVolumeClaim that names no class: EKS ships `gp2` without the
+`storageclass.kubernetes.io/is-default-class` annotation, and this stack adds
+nothing to replace it. A chart with a PVC therefore stays `Pending`
+indefinitely, and the reason is hard to see — the driver is there, the role is
+there, and the claim simply never binds.
+
+Nothing here creates it, because a StorageClass is a Kubernetes object and every
+stack in this repository configures the `aws` provider only. Apply it alongside
+the controllers:
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  encrypted: "true"
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+```
+
+`reclaimPolicy: Delete` discards the volume together with the claim, which is
+what an evaluation environment wants and what production does not: for prd use
+`Retain`, so deleting a release does not take the data with it.
+
 Notes:
 
 - The Cluster Autoscaler also needs the ASG auto-discovery tags. This stack adds
