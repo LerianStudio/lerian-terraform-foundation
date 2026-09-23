@@ -191,9 +191,9 @@ now: a cluster created earlier and upgraded in place keeps the `gp2` default it
 was born with, and `cluster_version` takes any version string with no floor
 enforced here. Check `kubectl get sc` before applying the manifest below.
 Kubernetes allows more than one default and gives a classless PVC the most
-recently created one, so leaving `gp2` annotated makes the class a claim lands
-on a matter of creation order — clear the annotation off `gp2` so `gp3` is the
-only default.
+recently created one, so leaving another class annotated makes the one a claim
+lands on a matter of creation order — clear the annotation off every default the
+cluster already has, `gp2` or otherwise, so `gp3` is the only one left.
 
 Nothing here creates it, because a StorageClass is a Kubernetes object and every
 stack in this repository configures the `aws` provider only. Apply it alongside
