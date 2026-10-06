@@ -76,7 +76,21 @@ def check_eks(plan):
     print("EKS: instance, volume and ENI launch tags verified for both node groups")
 
 
+def check_midaz_valkey(plan):
+    # Midaz keeps balances in Valkey until they reach Postgres: eviction loses them.
+    groups = [
+        r for r in plan["resource_changes"]
+        if r["type"] == "aws_elasticache_parameter_group"
+    ]
+    assert len(groups) == 1, [r["address"] for r in groups]
+    params = groups[0]["change"]["after"]["parameter"]
+    assert {"name": "maxmemory-policy", "value": "noeviction"} in params, params
+    print("midaz valkey: parameter group renders maxmemory-policy = noeviction")
+
+
 if __name__ == "__main__":
     test_plan("examples/aws/bootstrap")
     for plan in test_plan("examples/aws/infra-base/eks"):
         check_eks(plan)
+    for plan in test_plan("examples/aws/products/midaz/valkey"):
+        check_midaz_valkey(plan)

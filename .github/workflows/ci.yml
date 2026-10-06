@@ -98,7 +98,7 @@ jobs:
           echo "::endgroup::"
         done
 
-    - name: Test cost tag propagation (mocked providers)
+    - name: Test rendered plans (mocked providers)
       run: python3 scripts/test-cost-tags.py
 
     # Run TFLint on all Terraform files

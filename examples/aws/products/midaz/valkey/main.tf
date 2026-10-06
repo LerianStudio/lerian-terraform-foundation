@@ -82,6 +82,14 @@ module "valkey" {
   parameter_group_family = var.parameter_group_family
   port                   = var.port
 
+  # Balances live here until midaz syncs them to Postgres, so an evicted key is a
+  # lost balance: noeviction refuses the write instead. Fixed, not a variable.
+  # latency-tracking repeats the module default that this list replaces.
+  parameters = [
+    { name = "latency-tracking", value = "yes" },
+    { name = "maxmemory-policy", value = "noeviction" },
+  ]
+
   node_type                  = var.node_type
   num_cache_clusters         = var.num_cache_clusters
   automatic_failover_enabled = var.automatic_failover_enabled

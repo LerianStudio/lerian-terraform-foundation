@@ -36,6 +36,8 @@ allowed_cidr_blocks        = []
 # apply, not the plan.
 ################################################################################
 
+# maxmemory-policy = noeviction is fixed in main.tf, not here: balances live in
+# Valkey until synced to Postgres, so a full node refuses writes, never evicts.
 engine_version         = "7.2"
 parameter_group_family = "valkey7"
 port                   = 6379
