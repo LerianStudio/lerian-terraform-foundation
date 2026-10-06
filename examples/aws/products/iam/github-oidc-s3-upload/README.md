@@ -118,9 +118,9 @@ its role goes.
 
 The identity provider is not. `token.actions.githubusercontent.com` is an
 **account singleton**: AWS refuses a second provider for the same URL, so every
-GitHub-OIDC role in this account, here or elsewhere, trusts *this* object. A destroy that
-takes it down invalidates their trust policies too — they keep referring to an
-ARN that no longer resolves, and every `AssumeRoleWithWebIdentity` against them
+GitHub-OIDC role in this account, here or elsewhere, trusts *this* object. A
+destroy that takes it down invalidates their trust policies too — they keep
+referring to an ARN that no longer resolves, and every `AssumeRoleWithWebIdentity` against them
 fails, with nothing in their own Terraform state having changed to explain it.
 
 So before destroying this root while a role outside it trusts the provider,
