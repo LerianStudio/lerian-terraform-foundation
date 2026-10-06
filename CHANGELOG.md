@@ -1,5 +1,20 @@
 # Lerian-terraform-foundation Changelog
 
+## [1.13.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.13.0)
+
+- Features:
+  - Allow each upload role to trust a chosen list of git refs.
+
+- Improvements:
+  - Refactor AWS to make upload refs a set and remove unreachable refusals.
+  - Document refs on the migrations upload roles.
+
+Contributors: @fred, @lerian-studio-midaz-push-bot[bot],
+
+[Compare changes](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.12.0...v1.13.0)
+
+---
+
 ## [1.12.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.12.0)
 
 - **Features:**
