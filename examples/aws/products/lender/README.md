@@ -1,13 +1,20 @@
 # products/lender
 
-AWS datastores for **lender** (ex-underwriter; the lending product): products,
-origination, servicing, accounting, portfolio, audit.
+AWS datastores and vault identity for **lender** (ex-underwriter; the lending
+product): products, origination, servicing, accounting, portfolio, audit.
 
 ```
 examples/aws/products/lender/
-├── postgres/     -> _modules/postgres-rds         lender-{env}-postgres
-└── valkey/       -> _modules/valkey-elasticache   lender-{env}-valkey
+├── postgres/     -> _modules/postgres-rds          lender-{env}-postgres
+├── secrets/      -> _modules/irsa-secretsmanager   lender-{env}-secrets-irsa
+└── valkey/       -> _modules/valkey-elasticache    lender-{env}-valkey
 ```
+
+`secrets/` is the IRSA role the lender reads its per-tenant M2M credentials with
+(`tenants/{ENV_NAME}/*/lender/m2m/`, plus `installation/{ENV_NAME}/lender/`),
+with the Dataprev custody path denied. Unlike the two datastores, its
+`helm_values` is verified against helm-internal `charts/lender`; see
+[`secrets/README.md`](secrets/README.md).
 
 See [`../midaz/README.md`](../midaz/README.md) for everything identical across
 products: the `lerian-` / `shared-` prefix split, `module.network`, the absence
@@ -144,7 +151,7 @@ regardless, so enabling it later is a tfvars change, not a rebuild.
 2. examples/aws/infra-base/vpc            -> lerian-{env}-vpc
 3. examples/aws/infra-base/eks            -> lerian-{env}-eks
 4. examples/aws/products/shared-resources/*   (OPTIONAL, only for mode = "shared")
-5. products/lender/{postgres,valkey}     <- in any order, in parallel
+5. products/lender/{postgres,valkey,secrets}   <- in any order, in parallel
 6. helm upgrade --install lender ...     <- blocked on the chart being available
 ```
 
@@ -165,6 +172,7 @@ terraform apply tfplan
 | Stack | State key |
 |---|---|
 | postgres | `aws/products/lender/postgres/terraform.tfstate` |
+| secrets | `aws/products/lender/secrets/terraform.tfstate` |
 | valkey | `aws/products/lender/valkey/terraform.tfstate` |
 
 ## What gets created
@@ -175,6 +183,7 @@ terraform apply tfplan
 |---|---|---|---|
 | postgres | `lender-dev-postgres` (RDS `db.t4g.micro`, 20 GB) | `lender-dev-postgres/password` | 15 |
 | valkey | `lender-dev-valkey` (ElastiCache `cache.t4g.micro`, 1 node) | `lender-dev-valkey/auth-token` | 12 |
+| secrets | `lender-dev-secrets-irsa` (IAM role + policy) | — | 0 |
 | **total** | | | **~27** |
 
 Estimates; price them against your own AWS Pricing Calculator.
