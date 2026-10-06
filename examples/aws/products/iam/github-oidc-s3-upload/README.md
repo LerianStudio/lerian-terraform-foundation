@@ -6,8 +6,9 @@ listed repository.
 
 The tenant manager reads a service's SQL migrations out of an S3 bucket in the
 **application** account, under `{channel}/{service}/{module}/{dbType}/`. The
-files get there from the service's release pipeline: go-release's `S3 Upload`
-job copies them on every tag.
+files get there from the service's pipeline, run on a ref its role admits:
+go-release's `S3 Upload` job on a tag, the shared `s3-upload.yml` workflow on a
+tag or a branch push.
 
 That job does **not** assume a role from another AWS account. It asks GitHub for
 a fresh OIDC token and calls `sts:AssumeRoleWithWebIdentity` with
@@ -23,12 +24,15 @@ Applies in the account that owns the bucket, **once**, as environment `prd`.
    and no trust policy can name it. No thumbprint is pinned: since 2023 AWS
    validates `token.actions.githubusercontent.com` against its own trust store
    and ignores the recorded value.
-2. **Per repository, a trust policy pinning `:sub` to that repository's tag
-   pushes, and `:aud`.** Every GitHub Actions token in the world is signed by the
-   same issuer, so `:sub` is the entire boundary. `StringLike` is on the **tag
-   name**, never on the repository: `repo:OWNER/REPO:ref:refs/tags/*`. A branch
-   push carries a different subject and is refused, which is what keeps a
-   workflow edited in a fork's pull request away from the bucket.
+2. **Per repository, a trust policy pinning `:sub` to the refs listed for that
+   repository, and `:aud`.** Every GitHub Actions token in the world is signed by
+   the same issuer, so `:sub` is the entire boundary: one
+   `repo:OWNER/REPO:ref:{ref}` per entry of `refs`, under `StringLike`. The only
+   wildcard allowed is the whole tag glob `refs/tags/*`, the default, and it is
+   on the **tag name**, never on the repository. A branch is named in full and
+   admits only itself. A pull request carries a different subject and is
+   refused, which is what keeps a workflow edited in a fork's pull request away
+   from the bucket.
 3. **Per role, one inline policy, one verb.** `s3:PutObject` over
    `{channel}/{service}/*` for the three release channels and each service that
    repository publishes, and nothing else. The service is the folder go-release
@@ -55,18 +59,19 @@ needed.
 
 ## Why the channels are derived, not configured
 
-go-release picks the top-level folder from the tag's channel:
+The upload workflow picks the top-level folder from the ref that ran it:
 
-| tag                         | folder         |
-| --------------------------- | -------------- |
-| `*-beta*`                   | `development/` |
-| `*-rc*`                     | `staging/`     |
-| `vX.Y.Z`                    | `production/`  |
+| tag        | branch              | folder         |
+| ---------- | ------------------- | -------------- |
+| `*-beta*`  | `develop`           | `development/` |
+| `*-rc*`    | `release-candidate` | `staging/`     |
+| `vX.Y.Z`   | `main`              | `production/`  |
 
-An `s3_uploads` entry is **not** conditional on the channel — it runs on every
-tag the repository cuts. A service that cuts a beta on each merge to `develop`
-writes to `development/` constantly, so a policy listing only `production/`
-turns every merge into a red `S3 Upload` job: the step runs under
+go-release's `S3 Upload` job reads only the tag columns; branch pushes upload
+through `s3-upload.yml`. An upload is **not** conditional on the channel — it
+runs on every admitted ref. A service that cuts a beta on each merge to
+`develop` writes to `development/` constantly, so a policy listing only
+`production/` turns every merge into a red upload job: the step runs under
 `set -euo pipefail`, and one `AccessDenied` kills it.
 
 Listing the three folders in a tfvars would make "all the channels, and only the
@@ -98,12 +103,32 @@ Until step 3 lands for a repository, nothing assumes its role.
 > over `s3_uploads` entries, so an empty secret kills the job before any entry —
 > including the entries that carry their own `aws_role_arn`.
 
+## Trusting protected branches instead of tags
+
+```hcl
+github_repositories = {
+  "LerianStudio/br-consignado-gw" = {
+    role_name = "consignado-github-oidc-s3-upload"
+    services  = ["br-consignado-gw"]
+    refs      = ["refs/heads/main", "refs/heads/release-candidate"]
+  }
+}
+```
+
+That role admits exactly `repo:LerianStudio/br-consignado-gw:ref:refs/heads/main`
+and `…:ref:refs/heads/release-candidate`; a tag push is refused. The shared
+upload workflow writes a `main` run to `production/` and a `release-candidate`
+run to `staging/`. A listed branch is exactly as strong as its protection:
+whoever can push to it can upload. Add `refs/tags/*` to the set to keep tags
+admitted alongside the branches.
+
 ## Inputs
 
 | name                     | required | notes                                                              |
 | ------------------------ | -------- | ------------------------------------------------------------------ |
 | `environment`            | yes      | `prd` — the roles are a property of the account, not of a stack     |
-| `github_repositories`    | yes      | map of `owner/repo` => `{ role_name, services }`. The key is that role's trust subject; `services` its object prefixes, never shared between repositories; `role_name` is copied verbatim into that repository's `release.yml` |
+| `github_repositories`    | yes      | map of `owner/repo` => `{ role_name, services, refs }`. The key and `refs` are that role's trust subjects, one per ref; `services` its object prefixes, never shared between repositories; `role_name` is copied verbatim into that repository's `release.yml` |
+| `github_repositories[*].refs` | no  | non-empty set of refs, each exactly `refs/tags/*` or `refs/heads/<branch>` named in full (no `*`, `?`, `[`). Defaults to `["refs/tags/*"]` |
 | `migrations_bucket_name` | yes      | a bucket **name**, not an ARN                                       |
 | `region`                 | no       | provider endpoint and tags only; S3 ARNs carry no region            |
 | `extra_tags`             | no       |                                                                     |

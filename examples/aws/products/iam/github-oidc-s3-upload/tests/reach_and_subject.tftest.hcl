@@ -13,10 +13,10 @@
 #      That is not a hypothetical: an earlier cut of this task's design left
 #      development/ out.
 #
-#   2. THE SUBJECTS. `repo:{owner}/{repo}:ref:refs/tags/*` is the whole trust
-#      boundary of each role. A subject built one segment wrong does not fail the
-#      apply: the role exists, and the pipeline gets AccessDenied on a tag months
-#      later — or, worse, a repository that is not listed gets in.
+#   2. THE SUBJECTS. `repo:{owner}/{repo}:ref:{ref}`, one per listed ref, is the
+#      whole trust boundary of each role. A subject built one segment wrong does
+#      not fail the apply: the role exists, and the pipeline gets AccessDenied
+#      months later — or, worse, a repository or ref that is not listed gets in.
 #
 #   3. THE SEPARATION. Several repositories share this root and its identity
 #      provider. One repository's release reaching another's prefix could
@@ -157,56 +157,57 @@ run "only_listed_repositories_can_assume_and_each_only_its_own_role" {
     error_message = "A trust policy is not exactly one statement federating to this root's GitHub provider with :aud pinned to sts.amazonaws.com under StringEquals."
   }
 
-  # The SHAPE that makes the next two asserts exact: a subject under StringLike
-  # whose only wildcard is one trailing "*" after refs/tags/ matches a token
-  # exactly when the token starts with the subject minus that "*". Widened to
-  # refs/* it admits branch pushes, including a workflow edited in a fork's pull
-  # request; moved onto the repository it admits other repositories; dropped for
-  # StringEquals it admits one release and nothing after it.
+  # No refs listed: each role admits its OWN repository's tags and nothing else.
+  # Equality against literals, so a widened glob, a branch, or another
+  # repository's subject fails it.
   assert {
-    condition = alltrue([
-      for role in aws_iam_role.this : (
-        endswith(jsondecode(role.assume_role_policy).Statement[0].Condition.StringLike["token.actions.githubusercontent.com:sub"], ":ref:refs/tags/*") &&
-        !strcontains(trimsuffix(jsondecode(role.assume_role_policy).Statement[0].Condition.StringLike["token.actions.githubusercontent.com:sub"], "*"), "*") &&
-        !strcontains(jsondecode(role.assume_role_policy).Statement[0].Condition.StringLike["token.actions.githubusercontent.com:sub"], "?")
-      )
-    ])
-    error_message = "A trust subject is not repo:{owner}/{repo}:ref:refs/tags/* with the tag name as its only wildcard."
+    condition = {
+      for repository, role in aws_iam_role.this :
+      repository => jsondecode(role.assume_role_policy).Statement[0].Condition.StringLike["token.actions.githubusercontent.com:sub"]
+      } == {
+      "LerianStudio/br-consignado-gw" = ["repo:LerianStudio/br-consignado-gw:ref:refs/tags/*"]
+      "LerianStudio/lender"           = ["repo:LerianStudio/lender:ref:refs/tags/*"]
+      "LerianStudio/midaz"            = ["repo:LerianStudio/midaz:ref:refs/tags/*"]
+    }
+    error_message = "A role without refs does not admit exactly its own repository's tag glob, repo:{owner}/{repo}:ref:refs/tags/*."
+  }
+}
+
+run "listed_refs_are_the_only_subjects" {
+  # apply for the same reason as the run above: the trust document names the
+  # provider's ARN, unknown until apply.
+  command = apply
+
+  variables {
+    github_repositories = {
+      "LerianStudio/br-consignado-gw" = {
+        role_name = "consignado-github-oidc-s3-upload"
+        services  = ["br-consignado-gw"]
+        refs      = ["refs/heads/main", "refs/heads/release-candidate"]
+      }
+      "LerianStudio/lender" = {
+        role_name = "lender-github-oidc-s3-upload"
+        services  = ["lender"]
+        refs      = ["refs/heads/main", "refs/heads/release-candidate", "refs/tags/*"]
+      }
+    }
   }
 
-  # Each listed repository's tag token is admitted by its OWN role and refused
-  # by every other one.
   assert {
-    condition = alltrue([
-      for repository, token in {
-        "LerianStudio/br-consignado-gw" = "repo:LerianStudio/br-consignado-gw:ref:refs/tags/v3.7.0"
-        "LerianStudio/lender"           = "repo:LerianStudio/lender:ref:refs/tags/v1.4.0-beta.2"
-        "LerianStudio/midaz"            = "repo:LerianStudio/midaz:ref:refs/tags/v3.6.0-rc.1"
-        } : alltrue([
-          for listed, role in aws_iam_role.this :
-          startswith(token, trimsuffix(jsondecode(role.assume_role_policy).Statement[0].Condition.StringLike["token.actions.githubusercontent.com:sub"], "*")) == (listed == repository)
-      ])
-    ])
-    error_message = "A listed repository's tag push is refused by its own role, or admitted by another repository's role. The second is the dangerous one: that role reaches the other repository's migrations prefix."
+    condition = jsondecode(aws_iam_role.this["LerianStudio/br-consignado-gw"].assume_role_policy).Statement[0].Condition.StringLike["token.actions.githubusercontent.com:sub"] == [
+      "repo:LerianStudio/br-consignado-gw:ref:refs/heads/main",
+      "repo:LerianStudio/br-consignado-gw:ref:refs/heads/release-candidate",
+    ]
+    error_message = "A role listing only main and release-candidate does not admit exactly those two branches. A tag subject left in lets any tag push write migrations."
   }
 
-  # Tokens no role may admit: an unlisted repository, an unlisted repository
-  # whose name EXTENDS a listed one, and a listed repository's branch push and
-  # pull request.
   assert {
-    condition = alltrue(flatten([
-      for token in [
-        "repo:LerianStudio/matcher:ref:refs/tags/v1.0.0",
-        "repo:LerianStudio/lender-fork:ref:refs/tags/v1.0.0",
-        "repo:Attacker/lender:ref:refs/tags/v1.0.0",
-        "repo:LerianStudio/lender:ref:refs/heads/develop",
-        "repo:LerianStudio/br-consignado-gw:pull_request",
-        ] : [
-        for role in aws_iam_role.this :
-        !startswith(token, trimsuffix(jsondecode(role.assume_role_policy).Statement[0].Condition.StringLike["token.actions.githubusercontent.com:sub"], "*"))
-      ]
-    ]))
-    error_message = "A role admits a token from an unlisted repository, or a branch push or pull request of a listed one."
+    condition = jsondecode(aws_iam_role.this["LerianStudio/lender"].assume_role_policy).Statement[0].Condition.StringLike["token.actions.githubusercontent.com:sub"] == [
+      "repo:LerianStudio/lender:ref:refs/heads/main",
+      "repo:LerianStudio/lender:ref:refs/heads/release-candidate",
+      "repo:LerianStudio/lender:ref:refs/tags/*",
+    ]
+    error_message = "A role listing two branches and refs/tags/* does not admit exactly those three subjects."
   }
 }
 
@@ -291,6 +292,41 @@ run "role_name_under_two_repositories_refused" {
       "LerianStudio/br-consignado-gw" = {
         role_name = "consignado-github-oidc-s3-upload"
         services  = ["br-consignado-gw"]
+      }
+    }
+  }
+
+  expect_failures = [var.github_repositories]
+}
+
+run "empty_refs_refused" {
+  command = plan
+
+  # An empty set of refs is refused.
+  variables {
+    github_repositories = {
+      "LerianStudio/lender" = {
+        role_name = "lender-github-oidc-s3-upload"
+        services  = ["lender"]
+        refs      = []
+      }
+    }
+  }
+
+  expect_failures = [var.github_repositories]
+}
+
+run "every_branch_refused" {
+  command = plan
+
+  # Every branch, including one pushed by anyone with write access and never
+  # reviewed.
+  variables {
+    github_repositories = {
+      "LerianStudio/lender" = {
+        role_name = "lender-github-oidc-s3-upload"
+        services  = ["lender"]
+        refs      = ["refs/heads/*"]
       }
     }
   }

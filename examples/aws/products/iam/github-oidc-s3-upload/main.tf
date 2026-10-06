@@ -4,18 +4,20 @@
 #
 # The tenant manager reads a service's SQL migrations out of an S3 bucket in the
 # APPLICATION account, under {channel}/{service}/{module}/{dbType}/. The files
-# get there from the service's release pipeline: go-release's `S3 Upload` job
-# copies them on every tag. That job authenticates by asking GitHub for a fresh
-# OIDC token and calling sts:AssumeRoleWithWebIdentity — so the principal a trust
-# policy must name is GITHUB'S OIDC PROVIDER, not a role in another AWS account.
+# get there from the service's pipeline, run on a ref its role admits:
+# go-release's `S3 Upload` job on a tag, the shared s3-upload workflow on a tag
+# or a branch push. Both authenticate by asking GitHub for a fresh OIDC token
+# and calling sts:AssumeRoleWithWebIdentity — so the principal a trust policy
+# must name is GITHUB'S OIDC PROVIDER, not a role in another AWS account.
 #
 # Three parts, all of them load-bearing:
 #
 #   1. GitHub's OIDC issuer, registered ONCE as an identity provider in THIS
 #      account, so a token minted by GitHub Actions is a principal this account
 #      recognises at all;
-#   2. per listed repository, a role whose trust policy pins `:sub` to TAG
-#      pushes of THAT repository and `:aud` to sts.amazonaws.com;
+#   2. per listed repository, a role whose trust policy pins `:sub` to the refs
+#      listed for THAT repository (its tags by default) and `:aud` to
+#      sts.amazonaws.com;
 #   3. per role, one inline policy with s3:PutObject over exactly the prefixes
 #      that repository publishes to.
 #
@@ -61,18 +63,18 @@ locals {
   ##############################################################################
   # The channel folders — DERIVED, NEVER AN INPUT
   #
-  # go-release picks the top-level folder from the tag's channel, and the
-  # mapping is its code, not a preference of this estate:
+  # The upload workflow picks the top-level folder from the ref that ran it, and
+  # the mapping is its code, not a preference of this estate:
   #
-  #   *-beta*                      -> development/
-  #   *-rc*                        -> staging/
-  #   ^v[0-9]+\.[0-9]+\.[0-9]+$    -> production/
+  #   tag *-beta*                    or branch develop            -> development/
+  #   tag *-rc*                      or branch release-candidate  -> staging/
+  #   tag ^v[0-9]+\.[0-9]+\.[0-9]+$  or branch main               -> production/
   #
-  # An `s3_uploads` entry is NOT conditional on the channel: it runs on every tag
-  # the repository cuts. A service that cuts a beta on each merge to develop
-  # therefore writes to development/ constantly, and a policy listing only
-  # production/ turns every one of those merges into a red `S3 Upload` job — the
-  # step runs under `set -euo pipefail`, so one AccessDenied kills the job.
+  # An upload is NOT conditional on the channel: it runs on every admitted ref.
+  # A service that cuts a beta on each merge to develop therefore writes to
+  # development/ constantly, and a policy listing only production/ turns every
+  # one of those merges into a red upload job — the step runs under
+  # `set -euo pipefail`, so one AccessDenied kills the job.
   #
   # Listing the three in a tfvars would make "all the channels, and only the
   # channels" a thing somebody has to remember. Deriving them here makes it true
@@ -80,7 +82,7 @@ locals {
   ##############################################################################
   channel_folders = ["development", "staging", "production"]
 
-  # ONE definition per repository of the subject and the prefixes, read by the
+  # ONE definition per repository of the subjects and the prefixes, read by the
   # documents attached below AND by the outputs that report them. Two copies
   # would be two things to keep equal, and the outputs are what an apply's
   # evidence gets read off.
@@ -90,8 +92,8 @@ locals {
   # postgresql/…) are covered at any depth.
   uploads = {
     for repository, upload in var.github_repositories : repository => {
-      role_name     = upload.role_name
-      trust_subject = "repo:${repository}:ref:refs/tags/*"
+      role_name      = upload.role_name
+      trust_subjects = [for ref in upload.refs : "repo:${repository}:ref:${ref}"]
       object_prefix_arns = flatten([
         for channel in local.channel_folders : [
           for service in upload.services :
@@ -125,21 +127,23 @@ resource "aws_iam_openid_connect_provider" "github" {
 ################################################################################
 # Trust policy
 #
-# :sub IS THE BOUNDARY AND IT IS FAIL-CLOSED ON TAGS. Every GitHub Actions token
+# :sub IS THE BOUNDARY AND IT IS FAIL-CLOSED ON REFS. Every GitHub Actions token
 # in the world carries the same issuer, so :sub is the only thing keeping other
-# repositories out. StringLike rather than StringEquals because the tag name is
-# part of the subject and changes on every release — the wildcard is on the tag,
-# never on the repository.
+# repositories out. One subject per ref listed for the repository, under
+# StringLike: the tag glob's only wildcard is on the tag name, never on the
+# repository, and a branch subject has no wildcard, so it matches only itself.
 #
-#   repo:OWNER/REPO:ref:refs/tags/v3.0.0-rc.9   admitted by REPO's role only
-#   repo:OWNER/REPO:ref:refs/heads/develop      REFUSED (a branch push is a
-#                                               different subject entirely)
+#   repo:OWNER/REPO:ref:refs/heads/main         admitted by REPO's role only when
+#                                               refs/heads/main is listed
+#   repo:OWNER/REPO:ref:refs/tags/v3.0.0-rc.9   admitted by REPO's role only when
+#                                               refs/tags/* is listed (default)
+#   repo:OWNER/REPO:ref:refs/heads/develop      REFUSED unless listed by name
 #   repo:OWNER/REPO:pull_request                REFUSED
 #   repo:OTHER/REPO:ref:refs/tags/v1.0.0        REFUSED by every role
 #
-# The branch case is the one that matters: a workflow run from a pull request of
-# a fork cannot mint a token this role accepts, so a contributor cannot reach the
-# bucket by editing a workflow file.
+# A pull request, from a fork above all, mints the pull_request subject, so a
+# contributor cannot reach the bucket by editing a workflow file. A listed branch
+# is exactly as strong as its protection: whoever can push to it can upload.
 #
 # :aud pins sts.amazonaws.com, the audience go-release requests. The provider's
 # client_id_list already requires it, so a token minted for another audience is
@@ -171,7 +175,7 @@ resource "aws_iam_role" "this" {
 
       Condition = {
         StringLike = {
-          "token.actions.githubusercontent.com:sub" = each.value.trust_subject
+          "token.actions.githubusercontent.com:sub" = each.value.trust_subjects
         }
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
