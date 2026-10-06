@@ -11,6 +11,8 @@ on:
       - edited      # When PR description/title is edited
       - synchronize # When PR receives new commits
       - reopened    # When PR is reopened
+  # Re-cuts a release that a concurrent push to main left unpublished.
+  workflow_dispatch:
 
 permissions:
   id-token: write       # Needed for authentication
@@ -32,7 +34,7 @@ jobs:
     # Checkout repository code in push
     - name: Checkout in push
       uses: actions/checkout@v4
-      if: github.event_name == 'push'
+      if: github.event_name != 'pull_request'
       with:
         fetch-depth: 0
 
@@ -127,7 +129,7 @@ jobs:
   release:
     needs: [validate]  # Only run after validation succeeds
     runs-on: blacksmith-4vcpu-ubuntu-2404
-    if: github.event_name == 'push'
+    if: github.event_name != 'pull_request'
     steps:
     # Create GitHub App token for better rate limits
     - uses: actions/create-github-app-token@v1
