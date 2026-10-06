@@ -3,6 +3,20 @@
 ## [1.11.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.11.0)
 
 - Features:
+  - Add bootstrap cost tags and propagation tests for AWS.
+
+- Fixes:
+  - Preserve Terraform test JSON output in CI for AWS.
+
+Contributors: @fred, @lerian-studio-midaz-push-bot[bot],
+
+[Compare changes](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.10.0...v1.11.0)
+
+---
+
+## [1.11.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.11.0)
+
+- Features:
   - Added bootstrap cost tags and propagation tests for AWS foundation.
 
 - Fixes:
