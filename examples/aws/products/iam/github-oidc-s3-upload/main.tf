@@ -4,10 +4,11 @@
 #
 # The tenant manager reads a service's SQL migrations out of an S3 bucket in the
 # APPLICATION account, under {channel}/{service}/{module}/{dbType}/. The files
-# get there from the service's release pipeline: go-release's `S3 Upload` job
-# copies them on every tag. That job authenticates by asking GitHub for a fresh
-# OIDC token and calling sts:AssumeRoleWithWebIdentity — so the principal a trust
-# policy must name is GITHUB'S OIDC PROVIDER, not a role in another AWS account.
+# get there from the service's pipeline, run on a ref its role admits:
+# go-release's `S3 Upload` job on a tag, the shared s3-upload workflow on a tag
+# or a branch push. Both authenticate by asking GitHub for a fresh OIDC token
+# and calling sts:AssumeRoleWithWebIdentity — so the principal a trust policy
+# must name is GITHUB'S OIDC PROVIDER, not a role in another AWS account.
 #
 # Three parts, all of them load-bearing:
 #
@@ -62,18 +63,18 @@ locals {
   ##############################################################################
   # The channel folders — DERIVED, NEVER AN INPUT
   #
-  # go-release picks the top-level folder from the tag's channel, and the
-  # mapping is its code, not a preference of this estate:
+  # The upload workflow picks the top-level folder from the ref that ran it, and
+  # the mapping is its code, not a preference of this estate:
   #
-  #   *-beta*                      -> development/
-  #   *-rc*                        -> staging/
-  #   ^v[0-9]+\.[0-9]+\.[0-9]+$    -> production/
+  #   tag *-beta*                    or branch develop            -> development/
+  #   tag *-rc*                      or branch release-candidate  -> staging/
+  #   tag ^v[0-9]+\.[0-9]+\.[0-9]+$  or branch main               -> production/
   #
-  # An `s3_uploads` entry is NOT conditional on the channel: it runs on every tag
-  # the repository cuts. A service that cuts a beta on each merge to develop
-  # therefore writes to development/ constantly, and a policy listing only
-  # production/ turns every one of those merges into a red `S3 Upload` job — the
-  # step runs under `set -euo pipefail`, so one AccessDenied kills the job.
+  # An upload is NOT conditional on the channel: it runs on every admitted ref.
+  # A service that cuts a beta on each merge to develop therefore writes to
+  # development/ constantly, and a policy listing only production/ turns every
+  # one of those merges into a red upload job — the step runs under
+  # `set -euo pipefail`, so one AccessDenied kills the job.
   #
   # Listing the three in a tfvars would make "all the channels, and only the
   # channels" a thing somebody has to remember. Deriving them here makes it true

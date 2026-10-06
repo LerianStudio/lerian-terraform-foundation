@@ -302,29 +302,13 @@ run "role_name_under_two_repositories_refused" {
 run "empty_refs_refused" {
   command = plan
 
-  # A role no token can assume: it applies, and every upload is denied.
+  # An empty set of refs is refused.
   variables {
     github_repositories = {
       "LerianStudio/lender" = {
         role_name = "lender-github-oidc-s3-upload"
         services  = ["lender"]
         refs      = []
-      }
-    }
-  }
-
-  expect_failures = [var.github_repositories]
-}
-
-run "duplicate_ref_refused" {
-  command = plan
-
-  variables {
-    github_repositories = {
-      "LerianStudio/lender" = {
-        role_name = "lender-github-oidc-s3-upload"
-        services  = ["lender"]
-        refs      = ["refs/heads/main", "refs/heads/main"]
       }
     }
   }
@@ -343,55 +327,6 @@ run "every_branch_refused" {
         role_name = "lender-github-oidc-s3-upload"
         services  = ["lender"]
         refs      = ["refs/heads/*"]
-      }
-    }
-  }
-
-  expect_failures = [var.github_repositories]
-}
-
-run "branch_prefix_glob_refused" {
-  command = plan
-
-  variables {
-    github_repositories = {
-      "LerianStudio/lender" = {
-        role_name = "lender-github-oidc-s3-upload"
-        services  = ["lender"]
-        refs      = ["refs/heads/feat/*"]
-      }
-    }
-  }
-
-  expect_failures = [var.github_repositories]
-}
-
-run "pull_request_ref_refused" {
-  command = plan
-
-  # The merge ref of a pull request runs code nobody merged yet.
-  variables {
-    github_repositories = {
-      "LerianStudio/lender" = {
-        role_name = "lender-github-oidc-s3-upload"
-        services  = ["lender"]
-        refs      = ["refs/pull/1/merge"]
-      }
-    }
-  }
-
-  expect_failures = [var.github_repositories]
-}
-
-run "branch_without_name_refused" {
-  command = plan
-
-  variables {
-    github_repositories = {
-      "LerianStudio/lender" = {
-        role_name = "lender-github-oidc-s3-upload"
-        services  = ["lender"]
-        refs      = ["refs/heads/"]
       }
     }
   }

@@ -14,6 +14,6 @@ output "allowed_subjects" {
 }
 
 output "object_prefix_arns" {
-  description = "The exact object ARNs each role's s3:PutObject is granted over, keyed by owner/repo, one per release channel. Echoed back because the failure this root exists to prevent is a missing channel, which is invisible until a tag of that channel is cut."
+  description = "The exact object ARNs each role's s3:PutObject is granted over, keyed by owner/repo, one per release channel. Echoed back because the failure this root exists to prevent is a missing channel, which is invisible until the first upload to that channel."
   value       = { for repository, upload in local.uploads : repository => upload.object_prefix_arns }
 }

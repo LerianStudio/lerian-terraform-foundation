@@ -10,7 +10,7 @@ variable "region" {
 }
 
 variable "environment" {
-  description = "Deployment environment this apply belongs to. One of dev, stg or prd; it feeds tags and the state key's backend config. ONE role per repository serves EVERY release channel, so this root is applied only as \"prd\" — the roles are a property of the account that owns the bucket, not of a stack. The channel (development/staging/production) is a FOLDER inside the bucket, chosen by the release pipeline from the tag, never by a second apply."
+  description = "Deployment environment this apply belongs to. One of dev, stg or prd; it feeds tags and the state key's backend config. ONE role per repository serves EVERY release channel, so this root is applied only as \"prd\" — the roles are a property of the account that owns the bucket, not of a stack. The channel (development/staging/production) is a FOLDER inside the bucket, chosen by the release pipeline from the ref it runs on, never by a second apply."
   type        = string
 
   validation {
@@ -69,7 +69,7 @@ variable "github_repositories" {
   type = map(object({
     role_name = string
     services  = list(string)
-    refs      = optional(list(string), ["refs/tags/*"])
+    refs      = optional(set(string), ["refs/tags/*"])
   }))
 
   # The charset is the boundary: a "*" or "?" in a key would be a wildcard in
@@ -113,12 +113,12 @@ variable "github_repositories" {
   validation {
     condition = alltrue([
       for repository in values(var.github_repositories) :
-      length(repository.refs) > 0 && length(repository.refs) == length(distinct(repository.refs)) && alltrue([
+      length(repository.refs) > 0 && alltrue([
         for ref in repository.refs :
         ref == "refs/tags/*" || can(regex("^refs/heads/[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$", ref))
       ])
     ])
-    error_message = "Every refs list in github_repositories must be non-empty with no duplicates, each entry either exactly refs/tags/* or refs/heads/<branch> with a branch name of [A-Za-z0-9._-] segments joined by single \"/\". Each ref is interpolated into the :sub condition, where any other wildcard would admit refs nobody listed."
+    error_message = "Every refs set in github_repositories must be non-empty, each entry either exactly refs/tags/* or refs/heads/<branch> with a branch name of [A-Za-z0-9._-] segments joined by single \"/\". Each ref is interpolated into the :sub condition, where any other wildcard would admit refs nobody listed."
   }
 }
 
