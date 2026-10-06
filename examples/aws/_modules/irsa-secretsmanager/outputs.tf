@@ -44,3 +44,8 @@ output "helm_values" {
     "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn" = aws_iam_role.this.arn
   }
 }
+
+output "policy_json" {
+  description = "The policy document attached to the role, as rendered. Emitted so a root's tests can assert the effects and actions it grants, not only the ARN patterns."
+  value       = data.aws_iam_policy_document.this.json
+}

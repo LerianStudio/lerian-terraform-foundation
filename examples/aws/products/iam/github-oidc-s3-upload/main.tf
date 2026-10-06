@@ -1,5 +1,5 @@
 ################################################################################
-# products/iam/github-oidc-s3-upload — the identity a release pipeline uses to
+# products/iam/github-oidc-s3-upload — the identities release pipelines use to
 # publish migrations into this account's migrations bucket
 #
 # The tenant manager reads a service's SQL migrations out of an S3 bucket in the
@@ -11,15 +11,23 @@
 #
 # Three parts, all of them load-bearing:
 #
-#   1. GitHub's OIDC issuer, registered as an identity provider in THIS account,
-#      so a token minted by GitHub Actions is a principal this account
+#   1. GitHub's OIDC issuer, registered ONCE as an identity provider in THIS
+#      account, so a token minted by GitHub Actions is a principal this account
 #      recognises at all;
-#   2. a trust policy pinning `:sub` to TAG pushes of ONE repository and `:aud`
-#      to sts.amazonaws.com, so exactly one repository's releases can assume it;
-#   3. one inline policy with s3:PutObject over exactly the prefixes that
-#      repository publishes to.
+#   2. per listed repository, a role whose trust policy pins `:sub` to TAG
+#      pushes of THAT repository and `:aud` to sts.amazonaws.com;
+#   3. per role, one inline policy with s3:PutObject over exactly the prefixes
+#      that repository publishes to.
 #
-# THE ROLE LIVES IN THE ACCOUNT THAT OWNS THE BUCKET, which is what makes a
+# ONE ROLE PER REPOSITORY, NOT ONE ROLE FOR ALL. A role's permissions cannot
+# tell which repository assumed it: GitHub's token carries no session tags, and
+# :sub is visible to the trust policy only. A shared role would hand every
+# listed repository the union of the prefixes, so one release could overwrite
+# another service's migrations, which the tenant manager then runs against that
+# service's database. The provider is shared because AWS allows one per URL per
+# account; everything after it is per repository.
+#
+# THE ROLES LIVE IN THE ACCOUNT THAT OWNS THE BUCKET, which is what makes a
 # bucket policy unnecessary: an in-account role with s3:PutObject is sufficient,
 # and _modules/s3-bucket does not have to grow a bucket-policy input.
 #
@@ -30,14 +38,16 @@
 # products/iam/oidc-cross-account-role, products/lerian-platform/dns.
 #
 # Deploy order: the bucket first (products/tenant-manager/s3, here), then this
-# root, then the `aws_role_arn` entry in the other repository's release.yml.
-# Until that last step lands, NOTHING assumes this role.
+# root, then the `aws_role_arn` entry in each repository's release.yml. Until
+# that last step lands for a repository, NOTHING assumes its role.
 ################################################################################
 
 module "naming" {
   source = "../../../_modules/naming"
 
-  product     = local.repository_name
+  # "lerian", not a repository: the identity provider is an account singleton
+  # every role below trusts, and no one repository owns it.
+  product     = "lerian"
   environment = var.environment
   component   = "migrations-upload"
   extra_tags  = var.extra_tags
@@ -48,8 +58,6 @@ module "naming" {
 data "aws_partition" "current" {}
 
 locals {
-  repository_name = split("/", var.github_repository)[1]
-
   ##############################################################################
   # The channel folders — DERIVED, NEVER AN INPUT
   #
@@ -72,62 +80,26 @@ locals {
   ##############################################################################
   channel_folders = ["development", "staging", "production"]
 
-  # {channel}/{repo}/* — one IAM wildcard, and it crosses "/", so the module and
-  # dbType segments go-release appends (br-consignado-gw/consignado/postgresql/…)
-  # are already covered at any depth.
-  object_prefix_arns = [
-    for channel in local.channel_folders :
-    "arn:${data.aws_partition.current.partition}:s3:::${var.migrations_bucket_name}/${channel}/${local.repository_name}/*"
-  ]
-
-  upload_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Sid      = "PutMigrationObjects"
-      Effect   = "Allow"
-      Action   = "s3:PutObject"
-      Resource = local.object_prefix_arns
-    }]
-  })
-
-  # ONE definition of the subject, read by the trust policy AND by the output
-  # that reports it. Two copies would be two things to keep equal, and the
-  # output is what an apply's evidence gets read off: an output that has drifted
-  # from the document reports a boundary the role does not have.
-  trust_subject = "repo:${var.github_repository}:ref:refs/tags/*"
-
-  ##############################################################################
-  # The trust policy itself — the commentary is above resource aws_iam_role.this
+  # ONE definition per repository of the subject and the prefixes, read by the
+  # documents attached below AND by the outputs that report them. Two copies
+  # would be two things to keep equal, and the outputs are what an apply's
+  # evidence gets read off.
   #
-  # jsonencode rather than aws_iam_policy_document, for the same reason as
-  # upload_policy above: a data source is a provider round trip, so under
-  # mock_provider the rendered document is generated noise and the trust — the
-  # whole security boundary of this root — cannot be asserted in a test at all.
-  # An earlier cut of the test worked around that by asserting the
-  # allowed_subject OUTPUT, which is an echo of a variable and passes happily
-  # while the attached document says something else.
-  ##############################################################################
-  trust_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Sid    = "AllowRepositoryTagPushToAssumeRole"
-      Effect = "Allow"
-      Action = "sts:AssumeRoleWithWebIdentity"
-
-      Principal = {
-        Federated = aws_iam_openid_connect_provider.github.arn
-      }
-
-      Condition = {
-        StringLike = {
-          "token.actions.githubusercontent.com:sub" = local.trust_subject
-        }
-        StringEquals = {
-          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-        }
-      }
-    }]
-  })
+  # {channel}/{service}/* — one IAM wildcard, and it crosses "/", so the module
+  # and dbType segments go-release appends (br-consignado-gw/consignado/
+  # postgresql/…) are covered at any depth.
+  uploads = {
+    for repository, upload in var.github_repositories : repository => {
+      role_name     = upload.role_name
+      trust_subject = "repo:${repository}:ref:refs/tags/*"
+      object_prefix_arns = flatten([
+        for channel in local.channel_folders : [
+          for service in upload.services :
+          "arn:${data.aws_partition.current.partition}:s3:::${var.migrations_bucket_name}/${channel}/${service}/*"
+        ]
+      ])
+    }
+  }
 }
 
 ################################################################################
@@ -139,8 +111,8 @@ locals {
 # rots on rotation, and reads as a security control.
 #
 # ONE PER ACCOUNT. AWS refuses a second provider for the same URL
-# (EntityAlreadyExists), so a second repository that needs the same treatment
-# reuses this one via the oidc_provider_arn output rather than registering its own.
+# (EntityAlreadyExists), which is why a second repository is a new entry in
+# github_repositories rather than a second instance of this root.
 ################################################################################
 
 resource "aws_iam_openid_connect_provider" "github" {
@@ -159,11 +131,11 @@ resource "aws_iam_openid_connect_provider" "github" {
 # part of the subject and changes on every release — the wildcard is on the tag,
 # never on the repository.
 #
-#   repo:OWNER/REPO:ref:refs/tags/v3.0.0-rc.9   admitted
+#   repo:OWNER/REPO:ref:refs/tags/v3.0.0-rc.9   admitted by REPO's role only
 #   repo:OWNER/REPO:ref:refs/heads/develop      REFUSED (a branch push is a
 #                                               different subject entirely)
 #   repo:OWNER/REPO:pull_request                REFUSED
-#   repo:OTHER/REPO:ref:refs/tags/v1.0.0        REFUSED
+#   repo:OTHER/REPO:ref:refs/tags/v1.0.0        REFUSED by every role
 #
 # The branch case is the one that matters: a workflow run from a pull request of
 # a fork cannot mint a token this role accepts, so a contributor cannot reach the
@@ -173,13 +145,40 @@ resource "aws_iam_openid_connect_provider" "github" {
 # client_id_list already requires it, so a token minted for another audience is
 # refused before any condition is read; it is written out because AWS documents
 # pinning both for web-identity trust, and because a second audience added to
-# client_id_list later would otherwise widen this role silently.
+# client_id_list later would otherwise widen every role silently.
+#
+# jsonencode rather than aws_iam_policy_document: a data source is a provider
+# round trip, so under mock_provider the rendered document is generated noise and
+# the trust — the whole security boundary of this root — could not be asserted
+# in tests/reach_and_subject.tftest.hcl at all.
 ################################################################################
 
 resource "aws_iam_role" "this" {
-  name                  = var.role_name
-  description           = "Release pipeline of ${var.github_repository} publishing migrations to s3://${var.migrations_bucket_name}"
-  assume_role_policy    = local.trust_policy
+  for_each = local.uploads
+
+  name        = each.value.role_name
+  description = "Release pipeline of ${each.key} publishing migrations to s3://${var.migrations_bucket_name}"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid    = "AllowRepositoryTagPushToAssumeRole"
+      Effect = "Allow"
+      Action = "sts:AssumeRoleWithWebIdentity"
+
+      Principal = {
+        Federated = aws_iam_openid_connect_provider.github.arn
+      }
+
+      Condition = {
+        StringLike = {
+          "token.actions.githubusercontent.com:sub" = each.value.trust_subject
+        }
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+        }
+      }
+    }]
+  })
   force_detach_policies = true
 
   # The AWS default (1 hour), written out because it is the ceiling on a
@@ -188,11 +187,11 @@ resource "aws_iam_role" "this" {
   # window in which a leaked credential still works.
   max_session_duration = 3600
 
-  tags = merge(module.naming.tags, { Name = var.role_name })
+  tags = merge(module.naming.tags, { Name = each.value.role_name })
 }
 
 ################################################################################
-# Grants — one inline policy, one verb
+# Grants — one inline policy per role, one verb
 #
 # INLINE and not managed: an inline policy cannot be attached to a second
 # principal, and deleting the role deletes it too, with no orphan left behind for
@@ -209,13 +208,31 @@ resource "aws_iam_role" "this" {
 ################################################################################
 
 resource "aws_iam_role_policy" "upload" {
-  name = "${var.role_name}-policy"
-  role = aws_iam_role.this.id
+  for_each = local.uploads
 
-  # jsonencode of a local rather than aws_iam_policy_document, and the reason is
-  # the test: a data source is a provider round trip, so under mock_provider the
-  # rendered document is generated noise and the ONE thing worth asserting — the
-  # set of prefixes actually attached to the role — cannot be read at all.
-  # Built here, tests/reach_and_subject.tftest.hcl reads the real document.
-  policy = local.upload_policy
+  name = "${each.value.role_name}-policy"
+  role = aws_iam_role.this[each.key].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid      = "PutMigrationObjects"
+      Effect   = "Allow"
+      Action   = "s3:PutObject"
+      Resource = each.value.object_prefix_arns
+    }]
+  })
+}
+
+# Before github_repositories this root managed one unkeyed role, the gateway's.
+# These carry its state to the gateway's key, so the upgrade moves a live role
+# instead of destroying it and re-creating it under the same name.
+moved {
+  from = aws_iam_role.this
+  to   = aws_iam_role.this["LerianStudio/br-consignado-gw"]
+}
+
+moved {
+  from = aws_iam_role_policy.upload
+  to   = aws_iam_role_policy.upload["LerianStudio/br-consignado-gw"]
 }

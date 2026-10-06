@@ -1,7 +1,8 @@
 # `products/iam/github-oidc-s3-upload`
 
-The identity a repository's release pipeline uses to publish migrations into
-this account's migrations bucket.
+The identities release pipelines use to publish migrations into this account's
+migrations bucket: one GitHub identity provider for the account, and one role per
+listed repository.
 
 The tenant manager reads a service's SQL migrations out of an S3 bucket in the
 **application** account, under `{channel}/{service}/{module}/{dbType}/`. The
@@ -22,18 +23,32 @@ Applies in the account that owns the bucket, **once**, as environment `prd`.
    and no trust policy can name it. No thumbprint is pinned: since 2023 AWS
    validates `token.actions.githubusercontent.com` against its own trust store
    and ignores the recorded value.
-2. **A trust policy pinning `:sub` to tag pushes of one repository, and `:aud`.**
-   Every GitHub Actions token in the world is signed by the same issuer, so
-   `:sub` is the entire boundary. `StringLike` is on the **tag name**, never on
-   the repository: `repo:OWNER/REPO:ref:refs/tags/*`. A branch push carries a
-   different subject and is refused, which is what keeps a workflow edited in a
-   fork's pull request away from the bucket.
-3. **One inline policy, one verb.** `s3:PutObject` over
-   `{channel}/{repo}/*` for the three release channels, and nothing else.
+2. **Per repository, a trust policy pinning `:sub` to that repository's tag
+   pushes, and `:aud`.** Every GitHub Actions token in the world is signed by the
+   same issuer, so `:sub` is the entire boundary. `StringLike` is on the **tag
+   name**, never on the repository: `repo:OWNER/REPO:ref:refs/tags/*`. A branch
+   push carries a different subject and is refused, which is what keeps a
+   workflow edited in a fork's pull request away from the bucket.
+3. **Per role, one inline policy, one verb.** `s3:PutObject` over
+   `{channel}/{service}/*` for the three release channels and each service that
+   repository publishes, and nothing else. The service is the folder go-release
+   writes under, usually the repo name but not always: Midaz publishes as
+   `ledger`.
 
-## Why the role lives here and not next to the pipeline
+## Why one role per repository, not one role for all
 
-It lives in the account that **owns the bucket**. That is what makes a bucket
+A role's permissions cannot tell which repository assumed it: GitHub's token
+carries no session tags, and `:sub` is visible to the trust policy only. One
+shared role would hand every listed repository the union of the prefixes, so one
+release could overwrite another service's migrations — which the tenant manager
+then runs against that service's database. The identity provider is shared
+because AWS allows one per URL per account; everything after it is per
+repository. Adding a repository is a new entry in `github_repositories`, never a
+second instance of this root.
+
+## Why the roles live here and not next to the pipelines
+
+They live in the account that **owns the bucket**. That is what makes a bucket
 policy unnecessary — an in-account role with `s3:PutObject` is enough, and
 `_modules/s3-bucket` does not have to grow a bucket-policy input it has never
 needed.
@@ -73,10 +88,10 @@ cost of the folders nothing reads today is zero.
 
 1. the bucket — `products/tenant-manager/s3`, here;
 2. **this root**;
-3. the `aws_role_arn` field of the `s3_uploads` entry in the other repository's
-   `release.yml`.
+3. the `aws_role_arn` field of the `s3_uploads` entry in each repository's
+   `release.yml`, set to that repository's entry of the `role_arns` output.
 
-Until step 3 lands, nothing assumes this role.
+Until step 3 lands for a repository, nothing assumes its role.
 
 > The organisation secret `AWS_MIGRATIONS_ROLE_ARN` must also reach the
 > repository. go-release's `Configure AWS credentials` step runs before the loop
@@ -87,9 +102,8 @@ Until step 3 lands, nothing assumes this role.
 
 | name                     | required | notes                                                              |
 | ------------------------ | -------- | ------------------------------------------------------------------ |
-| `environment`            | yes      | `prd` — the role is a property of the account, not of a stack       |
-| `github_repository`      | yes      | `owner/repo`; names both the trust subject and the object prefixes  |
-| `role_name`              | yes      | copied verbatim into the other repository's `release.yml`           |
+| `environment`            | yes      | `prd` — the roles are a property of the account, not of a stack     |
+| `github_repositories`    | yes      | map of `owner/repo` => `{ role_name, services }`. The key is that role's trust subject; `services` its object prefixes, never shared between repositories; `role_name` is copied verbatim into that repository's `release.yml` |
 | `migrations_bucket_name` | yes      | a bucket **name**, not an ARN                                       |
 | `region`                 | no       | provider endpoint and tags only; S3 ARNs carry no region            |
 | `extra_tags`             | no       |                                                                     |
@@ -97,18 +111,20 @@ Until step 3 lands, nothing assumes this role.
 ## Rollback
 
 `terraform destroy` of this root is free **only while nothing else trusts the
-provider**. The role and its inline policy are this root's alone — destroying
-them breaks the one release pipeline that names the role, and nothing else.
+provider**. The roles and their inline policies are this root's alone —
+destroying them breaks the release pipelines that name them, and nothing else.
+Removing ONE repository is a tfvars edit: drop its entry and re-apply, and only
+its role goes.
 
 The identity provider is not. `token.actions.githubusercontent.com` is an
 **account singleton**: AWS refuses a second provider for the same URL, so every
-future GitHub-OIDC role in this account trusts *this* object. A destroy that
-takes it down invalidates their trust policies too — they keep referring to an
-ARN that no longer resolves, and every `AssumeRoleWithWebIdentity` against them
+GitHub-OIDC role in this account, here or elsewhere, trusts *this* object. A
+destroy that takes it down invalidates their trust policies too — they keep
+referring to an ARN that no longer resolves, and every `AssumeRoleWithWebIdentity` against them
 fails, with nothing in their own Terraform state having changed to explain it.
 
-So before destroying this root once a second consumer exists, that consumer
-must own the provider first: `terraform state rm` it here and
+So before destroying this root while a role outside it trusts the provider,
+that consumer must own the provider first: `terraform state rm` it here and
 `terraform import` it there (or move it to a root of its own that both depend
 on). Until then, prefer reverting the tfvars and re-applying over a destroy.
 
@@ -116,6 +132,7 @@ on). Until then, prefer reverting the tfvars and re-applying over a destroy.
 
 ```bash
 aws iam list-open-id-connect-providers | grep -c 'token.actions.githubusercontent.com'   # 1
+# then, for each role in `terraform output role_arns`:
 aws iam get-role --role-name "$ROLE" \
   --query 'Role.AssumeRolePolicyDocument' | grep -o 'repo:[^"]*'
 aws iam get-role-policy --role-name "$ROLE" --policy-name "$ROLE-policy" \

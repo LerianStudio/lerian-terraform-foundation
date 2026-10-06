@@ -1,13 +1,19 @@
 # products/lender
 
-AWS datastores for **lender** (ex-underwriter; the lending product): products,
-origination, servicing, accounting, portfolio, audit.
+AWS datastores and vault identity for **lender** (ex-underwriter; the lending
+product): products, origination, servicing, accounting, portfolio, audit.
 
 ```
 examples/aws/products/lender/
-├── postgres/     -> _modules/postgres-rds         lender-{env}-postgres
-└── valkey/       -> _modules/valkey-elasticache   lender-{env}-valkey
+├── postgres/     -> _modules/postgres-rds          lender-{env}-postgres
+├── secrets/      -> _modules/irsa-secretsmanager   lender-{env}-secrets-irsa
+└── valkey/       -> _modules/valkey-elasticache    lender-{env}-valkey
 ```
+
+`secrets/` is the IRSA role the lender reads its per-tenant M2M credentials with
+(`tenants/{ENV_NAME}/*/lender/m2m/`), with the Dataprev custody path denied. Unlike the two datastores, its
+`helm_values` is verified against helm-internal `charts/lender`; see
+[`secrets/README.md`](secrets/README.md).
 
 See [`../midaz/README.md`](../midaz/README.md) for everything identical across
 products: the `lerian-` / `shared-` prefix split, `module.network`, the absence
@@ -15,40 +21,14 @@ of private DNS, and why `endpoint` is always the raw AWS host.
 
 ---
 
-## ⚠ Composition inferred — the chart is not in this repository
+## ⚠ The datastore roots' `helm_values` are not mapped yet
 
-**Read this before using these stacks for anything beyond a dev sandbox.**
-
-`infrastructure/K8S/helm/charts/underwriter/` contains **no `Chart.yaml`, no
-`values.yaml` and no `templates/`**. It holds one `charts/` directory with two
-vendored dependency tarballs and an empty `tmpcharts-*` leftover:
-
-```
-underwriter/
-├── charts/
-│   ├── postgresql-16.3.5.tgz     Bitnami postgresql, appVersion 17.2.0
-│   └── valkey-2.4.7.tgz          Bitnami valkey,     appVersion 8.0.2
-└── tmpcharts-66156/              (empty)
-```
-
-Both tarballs were unpacked and their `Chart.yaml` read: they are **upstream
-Bitnami charts**, not the product's own packaged chart. `lender` has no
-`lerian-common-helm` tarball either, so unlike `plugin-br-pix-jd` there is not
-even a library chart to inspect.
-
-### What that does and does not license
-
-| | |
-|---|---|
-| **Established** | The product depends on **PostgreSQL** and **Valkey**. Nobody vendors a dependency chart by accident, and the pair matches what `product-infra-dependencies.yaml` recorded. |
-| **Established** | It depends on **nothing else in this repo's catalogue**. No mongodb, rabbitmq, kafka or S3 tarball is vendored — the same evidence, read the other way. |
-| **NOT established** | Every env var name the application reads. The tarballs are the charts that *stand a database pod up*; they say nothing about how the product *connects to one*. |
-| **NOT established** | The database name. `database_name` defaults to `"lender"` here as an infrastructure choice, not because anything states it. |
-
-### Consequence: `helm_values` is empty in both roots
-
-Both `outputs.tf` files export `helm_values = {}` with the reasoning inline.
-This is deliberate, and it is the safer failure:
+The lender chart is `oci://ghcr.io/lerianstudio/helm-internal/lender-helm`
+(source: helm-internal `charts/lender`). `secrets/` is mapped against it.
+`postgres/` and `valkey/` are not: both `outputs.tf` files export
+`helm_values = {}`, and the database name defaults to `"lender"` as an
+infrastructure choice nobody has confirmed. This is deliberate, and it is the
+safer failure:
 
 > A wrong env var name does not fail the plan, does not fail the Helm render,
 > and does not fail the pod start. It produces a service quietly talking to the
@@ -81,17 +61,17 @@ back to Terraform.
 
 ### To close this
 
-1. Obtain the lender chart (its own repository, or a rendered release).
-2. Read `values.yaml` and the template that renders its ConfigMap.
-3. For Redis, check specifically whether the port is a separate key, embedded in
+1. Read `lender-helm`'s `values.yaml` and the template that renders its
+   ConfigMap.
+2. For Redis, check specifically whether the port is a separate key, embedded in
    the host, or appended by the template.
-4. Fill `helm_values` in both `outputs.tf`, replacing the `⚠` block with a
+3. Fill `helm_values` in both `outputs.tf`, replacing the `⚠` block with a
    `Verified against chart <name> <version>, <file:line>` note like the tracer
    and br-consignado-gw roots carry.
-5. Confirm `database_name` with the owning team and update the tfvars.
+4. Confirm `database_name` with the owning team and update the tfvars.
 
 Until then: **do not run these stacks in production.** The infrastructure is
-correct; the handoff is not verifiable.
+correct; the handoff is not mapped.
 
 ## What IS verified
 
@@ -130,9 +110,9 @@ Operator `ExternalSecret` references.
 ## Security posture
 
 `auth_token_enabled = false` and `transit_encryption_mode = "preferred"` in all
-three environments, **including production**, because the chart is not available
-and neither the application's AUTH support nor its TLS trust store can be
-verified. Flipping either switch blind is how a production cache goes dark.
+three environments, **including production**, because neither the
+application's AUTH support nor its TLS trust store has been verified against the
+chart. Flipping either switch blind is how a production cache goes dark.
 
 The token *is* generated and stored at `lender-{env}-valkey/auth-token`
 regardless, so enabling it later is a tfvars change, not a rebuild.
@@ -144,8 +124,9 @@ regardless, so enabling it later is a tfvars change, not a rebuild.
 2. examples/aws/infra-base/vpc            -> lerian-{env}-vpc
 3. examples/aws/infra-base/eks            -> lerian-{env}-eks
 4. examples/aws/products/shared-resources/*   (OPTIONAL, only for mode = "shared")
-5. products/lender/{postgres,valkey}     <- in any order, in parallel
-6. helm upgrade --install lender ...     <- blocked on the chart being available
+5. products/lender/{postgres,valkey,secrets}   <- in any order, in parallel
+6. helm upgrade --install lender oci://ghcr.io/lerianstudio/helm-internal/lender-helm
+                                          <- datastore values mapped by hand, see above
 ```
 
 ## Running a stack
@@ -165,6 +146,7 @@ terraform apply tfplan
 | Stack | State key |
 |---|---|
 | postgres | `aws/products/lender/postgres/terraform.tfstate` |
+| secrets | `aws/products/lender/secrets/terraform.tfstate` |
 | valkey | `aws/products/lender/valkey/terraform.tfstate` |
 
 ## What gets created
@@ -175,6 +157,7 @@ terraform apply tfplan
 |---|---|---|---|
 | postgres | `lender-dev-postgres` (RDS `db.t4g.micro`, 20 GB) | `lender-dev-postgres/password` | 15 |
 | valkey | `lender-dev-valkey` (ElastiCache `cache.t4g.micro`, 1 node) | `lender-dev-valkey/auth-token` | 12 |
+| secrets | `lender-dev-secrets-irsa` (IAM role + policy) | — | 0 |
 | **total** | | | **~27** |
 
 Estimates; price them against your own AWS Pricing Calculator.
