@@ -1,5 +1,22 @@
 # Lerian-terraform-foundation Changelog
 
+## [1.12.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.12.0)
+
+- **Features:**
+  - Added support for running Midaz Valkey with a `maxmemory-policy` set to `noeviction`.
+  - Introduced IRSA root for `products/lender/secrets`.
+  - Enabled trust for several repositories from a single GitHub OIDC root.
+
+- **Fixes:**
+  - Narrowed the lender role to its M2M credentials and tested its policy.
+  - Moved the gateway upload role in code and ensured shared role names are refused.
+
+Contributors: @fred, @lerian-studio-midaz-push-bot[bot],
+
+[Compare changes](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.11.0...v1.12.0)
+
+---
+
 ## [1.11.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.11.0)
 
 - Features:
