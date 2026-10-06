@@ -223,3 +223,16 @@ resource "aws_iam_role_policy" "upload" {
     }]
   })
 }
+
+# Before github_repositories this root managed one unkeyed role, the gateway's.
+# These carry its state to the gateway's key, so the upgrade moves a live role
+# instead of destroying it and re-creating it under the same name.
+moved {
+  from = aws_iam_role.this
+  to   = aws_iam_role.this["LerianStudio/br-consignado-gw"]
+}
+
+moved {
+  from = aws_iam_role_policy.upload
+  to   = aws_iam_role_policy.upload["LerianStudio/br-consignado-gw"]
+}

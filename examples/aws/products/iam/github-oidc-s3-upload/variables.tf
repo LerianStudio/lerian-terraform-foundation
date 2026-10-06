@@ -80,8 +80,11 @@ variable "github_repositories" {
     condition = alltrue([
       for repository in values(var.github_repositories) :
       can(regex("^[A-Za-z0-9+=,.@_-]{1,64}$", repository.role_name))
-    ])
-    error_message = "Every role_name in github_repositories must be 1-64 characters from the IAM name charset [A-Za-z0-9+=,.@_-]."
+      ]) && (
+      length(values(var.github_repositories)[*].role_name) ==
+      length(distinct(values(var.github_repositories)[*].role_name))
+    )
+    error_message = "Every role_name in github_repositories must be 1-64 characters from the IAM name charset [A-Za-z0-9+=,.@_-], and no two repositories may share one: the second role would fail mid-apply with EntityAlreadyExists."
   }
 
   # Same reason on the object side, plus the separation itself: a service listed

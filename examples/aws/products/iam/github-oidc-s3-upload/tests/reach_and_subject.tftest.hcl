@@ -277,6 +277,27 @@ run "service_under_two_repositories_refused" {
   expect_failures = [var.github_repositories]
 }
 
+run "role_name_under_two_repositories_refused" {
+  command = plan
+
+  # A copy-pasted entry: the plan would pass and the second role would fail
+  # mid-apply with EntityAlreadyExists, after the first was already created.
+  variables {
+    github_repositories = {
+      "LerianStudio/lender" = {
+        role_name = "consignado-github-oidc-s3-upload"
+        services  = ["lender"]
+      }
+      "LerianStudio/br-consignado-gw" = {
+        role_name = "consignado-github-oidc-s3-upload"
+        services  = ["br-consignado-gw"]
+      }
+    }
+  }
+
+  expect_failures = [var.github_repositories]
+}
+
 run "bucket_arn_instead_of_name_refused" {
   command = plan
 
