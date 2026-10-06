@@ -1,7 +1,7 @@
 # products/midaz/valkey
 
-Cache and distributed locks for the midaz ledger. Root stack over
-[`_modules/valkey-elasticache`](../../../_modules/valkey-elasticache).
+Account balances, cache and distributed locks for the midaz ledger. Root stack
+over [`_modules/valkey-elasticache`](../../../_modules/valkey-elasticache).
 
 One root, one datastore, one state file. See [`../README.md`](../README.md) for
 the product-level picture: deploy order, the shared-vs-dedicated model, and the
@@ -50,6 +50,23 @@ for three things the module cannot do:
    below.
 
 It creates no AWS resource of its own.
+
+## Eviction is off: `maxmemory-policy = noeviction`
+
+Midaz mutates account balances in Valkey and a background worker writes them to
+Postgres later; until then the Valkey key is the only copy. The `valkey7`
+default, `volatile-lru`, may evict any key with a TTL under memory pressure, and
+balance keys carry one. An evicted balance is lost silently and the ledger
+reloads a stale one from Postgres. `noeviction` makes Valkey refuse the write
+instead: a full cache fails loudly rather than losing a balance quietly.
+
+The parameter is **fixed in `main.tf`**, not a variable, so no tfvars can turn it
+off. `tests/eviction.tftest.hcl` plans the group under mocks and
+`scripts/test-cost-tags.py` asserts the rendered parameter group carries it.
+
+The guarantee covers `mode = "dedicated"` only. In shared mode this root creates
+nothing, and the policy is whatever `products/shared-resources/valkey` sets,
+which today is nothing: `volatile-lru`.
 
 ## Ingress
 

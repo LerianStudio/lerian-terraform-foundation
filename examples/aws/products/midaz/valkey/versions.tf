@@ -1,5 +1,6 @@
 terraform {
-  required_version = ">= 1.5.0"
+  # 1.7, not 1.5: tests/ uses mock_provider, and `terraform validate` parses it.
+  required_version = ">= 1.7.0"
 
   required_providers {
     aws = {
