@@ -13,13 +13,13 @@ credential stops the process.
 
 | | |
 |---|---|
-| **Allow** `GetSecretValue` | `tenants/{app_env_name}/*/lender/m2m/*` and `installation/{app_env_name}/lender/*` |
+| **Allow** `GetSecretValue` | `tenants/{app_env_name}/*/lender/m2m/*` |
 | **Deny** `secretsmanager:*` | `tenants/*/*/*/external/*`: the Dataprev custody credentials, which only br-consignado-gw may read |
 
-Both allow prefixes are **derived from `app_env_name`**, so the vault scope and the
+The allow prefix is **derived from `app_env_name`**, so the vault scope and the
 `ENV_NAME` the pod boots with cannot disagree. The Deny is a literal in `main.tf`,
-not a variable, so no tfvars can drop it. No `ListSecrets`, no writes: tenant
-credentials are written by tenant-manager.
+not a variable, so no tfvars can drop it. No `ListSecrets`, no writes and no KMS
+grant: tenant-manager writes these credentials under the AWS-managed key.
 
 ## Helm handoff
 

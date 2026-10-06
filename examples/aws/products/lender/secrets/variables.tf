@@ -44,16 +44,10 @@ variable "service_account" {
   default     = "lender:lender"
 }
 
-variable "kms_key_arns" {
-  description = "Customer managed keys the role may use. Empty is correct while the vault uses the AWS-managed key."
-  type        = list(string)
-  default     = []
-}
-
 variable "app_env_name" {
   description = <<-EOT
     The APPLICATION's environment name — the ENV_NAME the lender boots with, and
-    the segment both vault prefixes are built from. "production" on this estate,
+    the segment the vault prefix is built from. "production" on this estate,
     while var.environment is "prd". They are different vocabularies and both are
     load-bearing: var.environment names the IAM objects, this names the vault.
 

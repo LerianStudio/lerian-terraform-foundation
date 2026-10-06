@@ -51,7 +51,7 @@ output "secret_arn_patterns" {
 ################################################################################
 
 output "helm_values" {
-  description = "Lender chart values this role fills in. ENV_NAME must stay equal to app_env_name — both vault prefixes were built from it."
+  description = "Lender chart values this role fills in. ENV_NAME must stay equal to app_env_name — the vault prefix was built from it."
   value = {
     "lender.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn" = module.secrets.iam_role_arn
     "lender.configmap.ENV_NAME"                                        = var.app_env_name
