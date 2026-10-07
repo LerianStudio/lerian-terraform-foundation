@@ -25,6 +25,10 @@
 # No ListSecrets, no writes and no KMS grant: the lender knows every path it
 # reads, and tenant-manager writes those credentials under the AWS-managed key.
 #
+# ONE ROLE. The custody bucket's policy from products/lender/s3 is attached here
+# through additional_policy_names, because the lender ServiceAccount carries one
+# role-arn annotation. Apply products/lender/s3 first.
+#
 # Deploy order: infra-base/eks -> this stack. The OIDC lookup is SINGULAR and fails
 # the plan when the cluster does not exist.
 ################################################################################
@@ -72,4 +76,6 @@ module "secrets" {
   read_actions = ["secretsmanager:GetSecretValue"]
 
   deny_secret_path_patterns = ["tenants/*/*/*/external/"]
+
+  additional_policy_names = var.additional_policy_names
 }

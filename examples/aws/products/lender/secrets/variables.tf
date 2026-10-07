@@ -63,3 +63,9 @@ variable "app_env_name" {
     error_message = "The app_env_name must be a lowercase name, e.g. production."
   }
 }
+
+variable "additional_policy_names" {
+  description = "Existing customer-managed policies attached to this role by name. THIS IS THE ONE-ROLE DECISION: the lender needs the vault AND its custody bucket, and a ServiceAccount carries exactly one role-arn annotation. The name comes from products/lender/s3 (lender-{env}-issuance-custody-s3-access), which must be applied first."
+  type        = list(string)
+  default     = []
+}

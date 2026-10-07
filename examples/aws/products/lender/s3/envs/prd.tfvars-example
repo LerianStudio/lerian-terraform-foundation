@@ -1,0 +1,55 @@
+################################################################################
+# products/lender/s3 — prd
+#
+# A few dollars a month plus storage.
+#
+# Object Lock is settable ONLY at bucket creation and cannot be turned off once
+# on. It is off below, on purpose: the lender writes no retention, rewrites a
+# key on a crash retry, and its custody sweeper deletes orphans. Turning it on
+# is a retention decision for CCBs, dossiers and terms that has to be taken
+# before the first apply; a bucket created without it has to be replaced to
+# gain it.
+#
+# Copy to prd.tfvars before use.
+################################################################################
+
+region      = "sa-east-1"
+product     = "lender"
+environment = "prd"
+
+# eks_cluster_name is derived -> lerian-prd-eks
+
+################################################################################
+# The custody bucket -> lender-prd-issuance-custody-{account_id}
+#
+# Module defaults: versioning on, SSE-S3 (set kms_key_arn for a CMK; the policy
+# then grants the key), a lifecycle rule that only aborts multipart uploads
+# left incomplete for 7 days, and no expiry.
+################################################################################
+
+buckets = {
+  "issuance-custody" = {}
+}
+
+################################################################################
+# IRSA
+#
+# irsa_enabled = false: THIS ROOT CREATES NO ROLE, only the attachable policy
+# lender-prd-issuance-custody-s3-access. products/lender/secrets takes that name
+# in additional_policy_names and attaches it to lender-prd-secrets-irsa, the one
+# role the lender ServiceAccount carries. Apply this root first: attaching a
+# policy that does not exist fails with NoSuchEntity.
+#
+# service_account is left set, unused, so flipping irsa_enabled to true does not
+# require rediscovering the value.
+################################################################################
+
+irsa_enabled    = false
+service_account = "lender:lender"
+
+require_latest_tls_policy = true
+
+extra_tags = {
+  Owner      = "consignado"
+  CostCenter = "consignado-prd"
+}
