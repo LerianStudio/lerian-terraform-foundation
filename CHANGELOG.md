@@ -1,5 +1,19 @@
 # Lerian-terraform-foundation Changelog
 
+## [1.14.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.14.0)
+
+- **Features:**
+  - Add lender S3 root for issuance custody.
+
+- **Improvements:**
+  - Update CHANGELOGs for lerian-terraform-foundation:v1.13.0.
+
+Contributors: @fred, @lerian-studio-midaz-push-bot[bot],
+
+[Compare changes](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.13.0...v1.14.0)
+
+---
+
 ## [1.13.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.13.0)
 
 - Features:
