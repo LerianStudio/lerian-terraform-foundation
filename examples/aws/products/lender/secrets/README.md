@@ -21,6 +21,14 @@ The allow prefix is **derived from `app_env_name`**, so the vault scope and the
 not a variable, so no tfvars can drop it. No `ListSecrets`, no writes and no KMS
 grant: tenant-manager writes these credentials under the AWS-managed key.
 
+## One role
+
+The lender also writes its custody bucket. `additional_policy_names` attaches
+`lender-{env}-issuance-custody-s3-access`, emitted by
+[`../s3`](../s3/README.md), to this role, because a ServiceAccount carries one
+`role-arn` annotation. Apply `../s3` first: an attachment to a policy that does
+not exist fails with `NoSuchEntity`.
+
 ## Helm handoff
 
 `helm_values` emits dotted paths of helm-internal `charts/lender`:

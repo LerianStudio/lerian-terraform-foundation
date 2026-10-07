@@ -1,11 +1,12 @@
 # products/lender
 
-AWS datastores and vault identity for **lender** (ex-underwriter; the lending
+AWS datastores, custody bucket and vault identity for **lender** (ex-underwriter; the lending
 product): products, origination, servicing, accounting, portfolio, audit.
 
 ```
 examples/aws/products/lender/
 ├── postgres/     -> _modules/postgres-rds          lender-{env}-postgres
+├── s3/           -> _modules/s3-bucket             lender-{env}-issuance-custody-{account_id}
 ├── secrets/      -> _modules/irsa-secretsmanager   lender-{env}-secrets-irsa
 └── valkey/       -> _modules/valkey-elasticache    lender-{env}-valkey
 ```
@@ -14,6 +15,10 @@ examples/aws/products/lender/
 (`tenants/{ENV_NAME}/*/lender/m2m/`), with the Dataprev custody path denied. Unlike the two datastores, its
 `helm_values` is verified against helm-internal `charts/lender`; see
 [`secrets/README.md`](secrets/README.md).
+
+`s3/` is the lender's custody bucket for CCB instruments, cessão dossiers and
+assignment terms. It creates no role: `secrets/` attaches its policy to the one
+lender role. See [`s3/README.md`](s3/README.md).
 
 See [`../midaz/README.md`](../midaz/README.md) for everything identical across
 products: the `lerian-` / `shared-` prefix split, `module.network`, the absence
@@ -124,8 +129,9 @@ regardless, so enabling it later is a tfvars change, not a rebuild.
 2. examples/aws/infra-base/vpc            -> lerian-{env}-vpc
 3. examples/aws/infra-base/eks            -> lerian-{env}-eks
 4. examples/aws/products/shared-resources/*   (OPTIONAL, only for mode = "shared")
-5. products/lender/{postgres,valkey,secrets}   <- in any order, in parallel
-6. helm upgrade --install lender oci://ghcr.io/lerianstudio/helm-internal/lender-helm
+5. products/lender/{postgres,valkey,s3}   <- in any order, in parallel
+6. products/lender/secrets                <- after s3: it attaches the s3 policy
+7. helm upgrade --install lender oci://ghcr.io/lerianstudio/helm-internal/lender-helm
                                           <- datastore values mapped by hand, see above
 ```
 
@@ -146,6 +152,7 @@ terraform apply tfplan
 | Stack | State key |
 |---|---|
 | postgres | `aws/products/lender/postgres/terraform.tfstate` |
+| s3 | `aws/products/lender/s3/terraform.tfstate` |
 | secrets | `aws/products/lender/secrets/terraform.tfstate` |
 | valkey | `aws/products/lender/valkey/terraform.tfstate` |
 
@@ -157,6 +164,7 @@ terraform apply tfplan
 |---|---|---|---|
 | postgres | `lender-dev-postgres` (RDS `db.t4g.micro`, 20 GB) | `lender-dev-postgres/password` | 15 |
 | valkey | `lender-dev-valkey` (ElastiCache `cache.t4g.micro`, 1 node) | `lender-dev-valkey/auth-token` | 12 |
+| s3 | `lender-dev-issuance-custody-{account_id}` (bucket + IAM policy) | — | 0 + storage |
 | secrets | `lender-dev-secrets-irsa` (IAM role + policy) | — | 0 |
 | **total** | | | **~27** |
 
