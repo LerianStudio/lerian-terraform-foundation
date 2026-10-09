@@ -1,3 +1,10 @@
+# [1.2.0-develop.2](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.2.0-develop.1...v1.2.0-develop.2) (2026-10-09)
+
+
+### Bug Fixes
+
+* pin the azure redis provider to the 3.x line ([87e2741](https://github.com/LerianStudio/lerian-terraform-foundation/commit/87e274188918cf7fd2f56f524f70c7c5a52bb3b1))
+
 # [1.2.0-develop.1](https://github.com/LerianStudio/midaz-terraform-foundation/compare/v1.1.0...v1.2.0-develop.1) (2025-09-16)
 
 
