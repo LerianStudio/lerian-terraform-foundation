@@ -1,0 +1,42 @@
+# Core Configuration
+region       = "us-east-2"          # Region the cluster is in
+cluster_name = "<eks-cluster-name>" # The `name` the eks root was given
+
+# Control Plane
+# Base URL of the Lerian control plane. https:// unless allow_insecure_http.
+control_plane_url = "<control-plane-url>"
+# allow_insecure_http = false       # http:// for an isolated dev cluster only
+
+# Credential - one of the two forms below.
+#
+# A single-use enrollment token (lerian_enroll_...) from
+#   POST /api/tenants/:tenantId/agents/enrollments
+# leaves agent_id empty: the agent is told its identity when it redeems the
+# token and keeps it in the Secret lerian-agent-identity.
+#
+# A per-agent token from POST /api/tenants/:tenantId/agents comes with an id,
+# and the chart refuses one without the other.
+agent_token = "<agent-token>"
+agent_id    = ""
+
+# Instead of the two above: a Secret already in the cluster holding AGENT_TOKEN
+# (and AGENT_ID for a per-agent token). This is the way the credential stays out
+# of Terraform state.
+# existing_secret_name = "lerian-agent-credentials"
+
+# Agent Configuration
+namespace          = "lerian-system"
+managed_namespaces = [] # Namespaces the agent may install into. Each must already exist.
+# Empty installs the newest published chart. Pin it for anything you keep.
+chart_version      = ""
+
+# Image
+# The chart defaults to ghcr.io/lerianstudio/agent. To pull from Docker Hub,
+# set BOTH: the agent refuses a self-update from a registry it was not told
+# about, and the default allowlist holds ghcr.io/lerianstudio only.
+# image_repository         = "docker.io/lerianstudio/agent"
+# allowed_image_registries = "ghcr.io/lerianstudio,docker.io/lerianstudio"
+#
+# Set after the control plane has moved the agent to a newer build, or the next
+# apply puts the old tag back.
+# image_digest = ""
