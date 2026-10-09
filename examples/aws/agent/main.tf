@@ -50,9 +50,14 @@ locals {
   # The trailing slash is what makes it a prefix of the path and not of the
   # string: without it "ghcr.io/lerianstudio-staging/agent" passes a list that
   # only allows "ghcr.io/lerianstudio".
+  # Empty entries are dropped rather than compared. A list written with a
+  # trailing comma would otherwise contribute the prefix "/", which allows any
+  # repository starting with one — and the check that exists to narrow the
+  # allowlist would have been widened by a typo.
   image_allowed = anytrue([
     for r in split(",", local.effective_registries) :
     startswith(var.image_repository, "${trimsuffix(trimspace(r), "/")}/")
+    if trimsuffix(trimspace(r), "/") != ""
   ])
 
   # Values the chart reads. Written as one YAML document rather than as a list
