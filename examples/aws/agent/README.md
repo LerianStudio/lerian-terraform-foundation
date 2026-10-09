@@ -40,6 +40,29 @@ No kubeconfig is read. The endpoint and the CA come from the data source and the
 token from `aws_eks_cluster_auth`, so an apply reaches the cluster named in
 `cluster_name` — never "whichever context the operator last selected".
 
+## Running it
+
+Nothing here is auto-loaded. `backend.tf` ships with placeholders, and
+`agent.tfvars-example` is an example file, not a `.auto.tfvars` — Terraform
+reads neither until you say so.
+
+```bash
+# 1. Point the backend at the bucket the backend root created.
+#    Edit backend.tf: bucket, key, region, dynamodb_table.
+
+# 2. Copy the example and fill it in.
+cp agent.tfvars-example agent.tfvars   # gitignored; it holds the credential
+
+# 3. Init, plan, apply.
+terraform init
+terraform plan  -var-file=agent.tfvars
+terraform apply -var-file=agent.tfvars
+```
+
+Keep the credential out of `agent.tfvars` if you would rather it never sat on
+disk: `export TF_VAR_agent_token=...` for the run, or put it in a Secret
+yourself and name that Secret in `existing_secret_name` — see below.
+
 ## The credential
 
 The agent authenticates to the control plane with one of two tokens, and the

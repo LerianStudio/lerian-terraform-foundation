@@ -7,13 +7,3 @@
 data "aws_eks_cluster" "selected" {
   name = local.cluster_name
 }
-
-# A short-lived token for the Helm provider below.
-#
-# aws_eks_cluster_auth rather than an exec plugin: the token is produced during
-# the plan, by the same credentials Terraform is already using, so there is no
-# second authentication path to configure and nothing for a CI runner to have
-# installed. It expires in 15 minutes, which outlives any single apply.
-data "aws_eks_cluster_auth" "selected" {
-  name = local.cluster_name
-}

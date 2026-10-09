@@ -1,6 +1,9 @@
 # Terraform and provider version constraints
 terraform {
-  required_version = ">= 1.0"
+  # 1.4 rather than the 1.0 the older roots here declare: this one uses
+  # terraform_data, which arrived in 1.4, and preconditions, which arrived in
+  # 1.2. A 1.0 that is admitted by the constraint cannot validate the code.
+  required_version = ">= 1.4"
 
   required_providers {
     aws = {
