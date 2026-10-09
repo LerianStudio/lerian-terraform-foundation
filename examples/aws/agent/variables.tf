@@ -8,11 +8,6 @@ variable "region" {
   type        = string
 }
 
-variable "environment" {
-  description = "Environment identifier."
-  type        = string
-}
-
 variable "cluster_name" {
   description = "Name of the EKS cluster to install the agent into - the `name` the eks root was given."
   type        = string

@@ -1,5 +1,4 @@
 # Core Configuration
-environment  = "<environment>"      # Environment identifier
 region       = "us-east-2"          # Region the cluster is in
 cluster_name = "<eks-cluster-name>" # The `name` the eks root was given
 
