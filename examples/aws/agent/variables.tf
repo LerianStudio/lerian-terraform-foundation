@@ -19,9 +19,9 @@ variable "cluster_name" {
 }
 
 variable "chart_version" {
-  description = "Version of the agent-helm chart. Pinned on purpose: an unpinned chart makes two applies of the same code produce different clusters."
+  description = "Version of the agent-helm chart. Empty takes the newest published version; set it to pin, which is what a production cluster should do."
   type        = string
-  default     = "1.0.1"
+  default     = ""
 }
 
 variable "namespace" {

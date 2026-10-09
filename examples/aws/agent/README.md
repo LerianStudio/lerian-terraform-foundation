@@ -92,7 +92,7 @@ this root only references it.
 |---|---|
 | `control_plane_url` | https:// unless `allow_insecure_http`; the agent sends its bearer token on every request |
 | `managed_namespaces` | every namespace the agent may install into. **Each must already exist**, and adding one later needs another apply |
-| `chart_version` | pinned. An unpinned chart makes two applies of the same code produce different clusters |
+| `chart_version` | empty by default, which installs the newest published chart. Pin it for a cluster you intend to keep: a version in the variables is the only way two applies of this code produce the same agent |
 | `image_repository` + `allowed_image_registries` | change them together. The agent refuses a self-update from a registry it was not told about, and the chart's default allows `ghcr.io/lerianstudio` only |
 | `image_digest` | set after the control plane has moved the agent to a newer build, or the next apply puts the old tag back |
 

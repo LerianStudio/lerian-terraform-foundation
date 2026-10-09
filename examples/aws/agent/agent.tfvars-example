@@ -28,7 +28,8 @@ agent_id    = ""
 # Agent Configuration
 namespace          = "lerian-system"
 managed_namespaces = [] # Namespaces the agent may install into. Each must already exist.
-chart_version      = "1.0.1"
+# Empty installs the newest published chart. Pin it for anything you keep.
+chart_version      = ""
 
 # Image
 # The chart defaults to ghcr.io/lerianstudio/agent. To pull from Docker Hub,

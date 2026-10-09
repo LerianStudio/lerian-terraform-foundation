@@ -143,7 +143,16 @@ resource "helm_release" "agent" {
   name       = "lerian-agent"
   repository = "oci://ghcr.io/lerianstudio"
   chart      = "agent-helm"
-  version    = var.chart_version
+
+  # Empty means "whatever is newest" — Helm resolves it against the registry at
+  # install time. That is the default here because a cluster being set up today
+  # should get today's agent rather than the version somebody wrote down months
+  # ago; the resolved version is then recorded in state, so later applies do not
+  # drift underneath a running cluster on their own.
+  #
+  # Pin it for anything you intend to keep. A version in the variables is the
+  # only way two applies of this code are guaranteed to produce the same agent.
+  version = var.chart_version != "" ? var.chart_version : null
 
   namespace        = var.namespace
   create_namespace = true
