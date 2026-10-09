@@ -37,12 +37,23 @@ locals {
   # about here.
   chart_default_registries = "ghcr.io/lerianstudio"
 
-  # The registry part of image_repository: "docker.io/lerianstudio/agent" is
-  # registered at "docker.io/lerianstudio". A repository with fewer than three
-  # segments has no registry to extract, and is left to the check below to pass
-  # rather than crashing the plan on a slice that runs off the end.
-  image_repository_parts = split("/", var.image_repository)
-  image_registry         = length(local.image_repository_parts) >= 3 ? join("/", slice(local.image_repository_parts, 0, 2)) : ""
+  # Whether image_repository sits under one of the allowed entries.
+  #
+  # By prefix rather than by cutting the repository into a fixed number of
+  # segments. Counting segments has to decide what "the registry" is before it
+  # can compare anything, and every answer is wrong for some input:
+  # "docker.io/agent" has two segments and no namespace, "agent" has one and no
+  # host at all, and a rule that skips what it cannot parse accepts exactly the
+  # repositories it was written to reject. A prefix test needs no such decision
+  # and matches what the agent does with the same list.
+  #
+  # The trailing slash is what makes it a prefix of the path and not of the
+  # string: without it "ghcr.io/lerianstudio-staging/agent" passes a list that
+  # only allows "ghcr.io/lerianstudio".
+  image_allowed = anytrue([
+    for r in split(",", local.effective_registries) :
+    startswith(var.image_repository, "${trimsuffix(trimspace(r), "/")}/")
+  ])
 
   # Values the chart reads. Written as one YAML document rather than as a list
   # of `set` blocks: `set` puts every value in the plan output, and one of these
@@ -117,10 +128,7 @@ resource "terraform_data" "credential_check" {
     # does not allow — but it checks at update time, which is weeks later and in
     # somebody else's terminal.
     precondition {
-      condition = local.image_registry == "" ? true : contains(
-        [for r in split(",", local.effective_registries) : trimspace(r)],
-        local.image_registry
-      )
+      condition     = var.image_repository == "" || local.image_allowed
       error_message = "The agent's allowed registries must contain the registry of image_repository, or it will refuse its own self-update. Leaving allowed_image_registries empty keeps the chart's default of ghcr.io/lerianstudio — set it alongside image_repository."
     }
   }

@@ -36,9 +36,15 @@ vpc → eks → agent
 It finds the cluster with a data source — not through remote state, which would
 couple this root to where that state is kept as well as to what it holds.
 
-No kubeconfig is read. The endpoint and the CA come from the data source and the
-token from `aws_eks_cluster_auth`, so an apply reaches the cluster named in
-`cluster_name` — never "whichever context the operator last selected".
+No kubeconfig is read. The endpoint and the CA come from the data source, so an
+apply reaches the cluster named in `cluster_name` — never "whichever context the
+operator last selected".
+
+The token comes from `aws eks get-token`, run by the Helm provider when it opens
+the connection. An EKS token lasts 15 minutes, so reading one during the plan
+would expire it under any approval gate; this way it is minted during the apply,
+every time. **The machine that applies needs the AWS CLI on its PATH**, with the
+same credentials Terraform is using.
 
 ## Running it
 
