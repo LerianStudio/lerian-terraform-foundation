@@ -1,6 +1,9 @@
 mock_provider "aws" {
   mock_data "aws_caller_identity" {
-    defaults = { account_id = "123456789012" }
+    defaults = {
+      account_id = "123456789012"
+      arn        = "arn:aws:sts::123456789012:assumed-role/Admin/alice@example.com"
+    }
   }
 }
 
@@ -17,7 +20,8 @@ run "default_tags" {
   assert {
     condition = aws_s3_bucket.tfstate.tags == tomap({
       Product    = "lerian", Environment = "dev", ManagedBy = "terraform",
-      Repository = "lerian-terraform-foundation", Name = "lerian-tfstate-dev-123456789012"
+      Repository = "lerian-terraform-foundation", Name = "lerian-tfstate-dev-123456789012",
+      CreatedBy  = "arn:aws:sts::123456789012:assumed-role/Admin/alice@example.com"
     }) && aws_dynamodb_table.tfstate_lock.tags.Name == "lerian-tfstate-lock-dev"
     error_message = "Bootstrap defaults and resource names must remain unchanged."
   }
@@ -78,5 +82,21 @@ run "resource_name_wins" {
       aws_dynamodb_table.tfstate_lock.tags.Name == "lerian-tfstate-lock-dev"
     )
     error_message = "Name must remain resource-derived even when extra_tags supplies it."
+  }
+}
+
+# CreatedBy answers "who made this backend", so it must be the identity that
+# ran bootstrap and nothing a caller can supply. extra_tags flows into the
+# naming tags, which the resource's own tags are merged over.
+run "created_by_cannot_be_forged" {
+  command = plan
+
+  variables {
+    extra_tags = { CreatedBy = "somebody-else" }
+  }
+
+  assert {
+    condition     = aws_s3_bucket.tfstate.tags.CreatedBy == "arn:aws:sts::123456789012:assumed-role/Admin/alice@example.com"
+    error_message = "CreatedBy must be the caller's ARN even when extra_tags supplies one."
   }
 }
