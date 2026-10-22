@@ -156,11 +156,23 @@ resource "aws_s3_bucket" "tfstate" {
 
   tags = merge(module.naming.tags, {
     Name = local.bucket_name
+    # Who created this backend, so whoever later finds it can tell the one their
+    # environment has been using from a bucket somebody made by mistake. S3
+    # reports no creator, and its CreationDate moves when the bucket policy is
+    # edited, so neither answers that question on its own.
+    CreatedBy = data.aws_caller_identity.current.arn
   })
 
   lifecycle {
     # See header section 3 before trying to remove this.
     prevent_destroy = true
+
+    # Recorded at creation and never again. Without this every apply would
+    # rewrite it to whoever ran last — and a bucket created before this tag
+    # existed would be stamped with the first person to apply afterwards, which
+    # is a false answer to "who created it". Such a bucket keeps no CreatedBy,
+    # and the CLI says nothing rather than something untrue.
+    ignore_changes = [tags["CreatedBy"]]
 
     precondition {
       condition     = terraform.workspace == "default" || terraform.workspace == var.environment
