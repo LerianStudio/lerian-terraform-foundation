@@ -2,6 +2,21 @@
 
 ## [1.15.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.15.0)
 
+- **Features:**
+  - Record who created a state bucket, once (#95)
+  - Record who created a state bucket, once
+
+- **Tests:**
+  - Cover CreatedBy in the bootstrap tag contract
+
+Contributors: @bedatty, @lerian-studio-midaz-push-bot[bot]
+
+[Compare changes](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.14.0...v1.15.0)
+
+---
+
+## [1.15.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.15.0)
+
 - **Features**
   - Record who created a state bucket, once (#95)
   - Record who created a state bucket, once
