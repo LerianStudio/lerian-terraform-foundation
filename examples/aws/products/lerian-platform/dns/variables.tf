@@ -16,7 +16,7 @@ variable "product" {
 }
 
 variable "environment" {
-  description = "Deployment environment. One of dev, stg or prd. Tags only: the zone name carries the environment distinction itself, because the two accounts of this estate hold DIFFERENT domains rather than the same domain twice."
+  description = "Deployment environment. One of dev, stg or prd. Tags only: the zone name carries the environment distinction itself, because each account holds a DIFFERENT domain rather than the same domain twice."
   type        = string
 
   validation {
@@ -43,7 +43,7 @@ variable "zone_name" {
     zone and never takes over an apex.
 
     Each account of this estate owns exactly one, and they are different names, not
-    the same name twice: that is what makes the two accounts independent at the DNS
+    the same name twice: that is what makes the accounts independent at the DNS
     layer while sharing one parent.
   EOT
 
