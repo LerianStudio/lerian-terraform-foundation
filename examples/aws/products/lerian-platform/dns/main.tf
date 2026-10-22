@@ -83,14 +83,11 @@ resource "aws_route53_zone" "this" {
     #
     # The flag is a guard against an ACCIDENTAL destroy, not a lock: a zone that is
     # retired on purpose leaves through a release that sets this to false, a destroy
-    # ordered parent-record-first (products/network/route53-delegation for a child
-    # of another zone, the apex for a child of the apex), and a release that sets it
-    # back. v1.9.2 was that off release for the consignado estate's
-    # *.consignado.lerian.dev zones; this is the release that puts the guard back.
+    # ordered parent-record-first, and a release that sets it back.
     prevent_destroy = true
 
-    # The dot matters. endswith(zone, parent) alone accepts "xlerian.dev" against
-    # parent "lerian.dev", because it has no notion of a label boundary; requiring
+    # The dot matters. endswith(zone, parent) alone accepts "xexample.dev" against
+    # parent "example.dev", because it has no notion of a label boundary; requiring
     # ".{parent}" pins the boundary. And the check has to be a real conjunction —
     # an earlier version wrote it as a disjunction, which only rejected
     # zone == parent and let a wholly unrelated domain through. A typo that gets
@@ -108,8 +105,8 @@ resource "aws_route53_zone" "this" {
 # Wildcard certificate
 #
 # Two names on one certificate: the apex and *.{apex}. A wildcard covers one label
-# only — it matches gw.consignado.lerian.dev and does NOT match
-# a.b.consignado.lerian.dev — which is why the apex is listed separately rather
+# only — it matches gw.consignado.example.dev and does NOT match
+# a.b.consignado.example.dev — which is why the apex is listed separately rather
 # than assumed to be covered.
 #
 # DNS validation, not email: email validation needs a human to click a link in a
@@ -149,18 +146,18 @@ resource "aws_route53_record" "validation" {
 
   # The apex and the wildcard produce the SAME validation record, and the map above
   # does NOT collapse to one entry: its key is option.domain_name, which differs
-  # ("consignado.lerian.dev" and "*.consignado.lerian.dev") while resource_record_name,
+  # ("consignado.example.dev" and "*.consignado.example.dev") while resource_record_name,
   # _type and _value are identical. So two Terraform instances own one Route 53
   # record. allow_overwrite is what keeps that applying — both write the same UPSERT,
   # and it also keeps a re-apply after a certificate replacement from failing on a
   # record that already exists.
   #
   # Keying by resource_record_name/_type instead would collapse the pair to the one
-  # instance that should exist, and it is the right shape. It is NOT a free edit here:
-  # the estate has already applied this root, so changing the for_each key renames both
-  # instances and the plan reads destroy-both-then-create-one on the live ACM validation
-  # CNAME — which is also what ACM re-reads at renewal. It needs `moved` blocks (or a
-  # state mv) and a plan reviewed per environment, not a drive-by rekey.
+  # instance that should exist, and it is the right shape. On a state that already
+  # holds this root, changing the for_each key renames both instances and the plan
+  # reads destroy-both-then-create-one on the live ACM validation CNAME — which is
+  # also what ACM re-reads at renewal. It needs `moved` blocks (or a state mv) and a
+  # plan reviewed per environment, not a drive-by rekey.
   allow_overwrite = true
 }
 

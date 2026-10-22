@@ -181,18 +181,10 @@ in `extra_tags`.
 
 ### Consuming the tag input
 
-Bootstrap in foundation **v1.9.3 and v1.10.0 does not declare `extra_tags`**. Consumers must
-first pin a published foundation release containing this change, then sync that
-release before supplying bootstrap cost tags. Do not add the input to a checkout
-still pinned to v1.9.3. In project-consignado, the pin is the default
-`LERIAN_FOUNDATION_REF` in `infra/sync.sh`; update the live version references in
-`infra/README.md` alongside it. Keep the existing backend, workspace, resource
+Bootstrap declares `extra_tags` from foundation **v1.11.0**; a checkout pinned to
+an earlier release rejects the input. Keep the existing backend, workspace, resource
 names and state addresses. Review the eventual plan for tag-only updates and no
 resource replacement before applying.
-
-An uncommitted foundation worktree cannot be consumed through that sync script:
-it clones/fetches Git refs, which omit working-tree edits. Local test runs can use
-this worktree directly; deployment consumption waits for an authorized release.
 
 EKS already passes `extra_tags` and node-group tags to the upstream managed-node
 launch templates. Their `tag_specifications` cover instances, volumes created

@@ -57,8 +57,8 @@ clusters/{env}/{dbType}/{service}/dedicated/{tenantOrgID}/admin
 
 **`{env}` here is the APPLICATION's environment name, not this repository's.** The
 naming module validates `environment` against the closed enum `dev|stg|prd`, while
-the vault paths carry whatever `ENV_NAME` the application boots with — `production`
-on the consignado estate. They are different namespaces in the same account and they
+the vault paths carry whatever `ENV_NAME` the application boots with, e.g.
+`production`. They are different namespaces in the same account and they
 do not collide, but writing `prd` into `secret_path_prefixes` produces a policy that
 matches nothing and a pod that gets AccessDenied on every read.
 
@@ -70,7 +70,7 @@ degenerate form. Decide whether to cover it deliberately; do not discover it.
 
 ## Deny, and why a narrower Allow is not a substitute
 
-Two roles on this estate need a broad Allow for reasons that are measured and not
+Two roles need a broad Allow for reasons that are measured and not
 negotiable: tenant-manager, because its own path builders emit three degenerate
 shapes an environment-scoped prefix does not match, and External Secrets, because it
 projects for every workload. Both of those broad Allows swallow the Dataprev custody

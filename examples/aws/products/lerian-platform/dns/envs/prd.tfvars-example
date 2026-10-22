@@ -27,14 +27,11 @@ environment = "prd"
 # "<...>" token outside a comment, which is the repository's convention for a value
 # that must not be guessed.
 #
-# zone_name differs per ACCOUNT, not per environment: the two accounts of this
-# estate hold two different delegated subdomains of one parent, which is what keeps
-# them independent at the DNS layer. Both accounts run environment = "prd" here —
-# the distinction lives in the account and in this name, not in the Terraform
-# environment enum.
+# zone_name differs per ACCOUNT: each account holds its own delegated subdomain of
+# one parent, which is what keeps the accounts independent at the DNS layer.
 #
-# parent_zone_name is the zone in the third, management account. It is never
-# managed from here; it only asserts that zone_name really is a child of it.
+# parent_zone_name is the zone in another account. It is never managed from here;
+# it only asserts that zone_name really is a child of it.
 ################################################################################
 
 zone_name        = "<CHILD-ZONE-FQDN>"

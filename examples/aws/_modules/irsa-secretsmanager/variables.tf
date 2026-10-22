@@ -11,7 +11,7 @@ variable "product" {
 }
 
 variable "environment" {
-  description = "Deployment environment. One of dev, stg or prd. THIS IS THE REPOSITORY's environment vocabulary and it names the IAM objects. It is NOT the environment segment inside the secret paths — that is the application's ENV_NAME (\"production\" on the consignado estate) and it goes in var.secret_path_prefixes."
+  description = "Deployment environment. One of dev, stg or prd. THIS IS THE REPOSITORY's environment vocabulary and it names the IAM objects. It is NOT the environment segment inside the secret paths — that is the application's ENV_NAME (e.g. \"production\") and it goes in var.secret_path_prefixes."
   type        = string
 
   validation {
@@ -63,10 +63,9 @@ variable "secret_path_prefixes" {
     Manager suffixes every ARN with six random characters, so even an exact secret
     name needs the wildcard, and a caller that adds their own produces "**".
 
-    THE SEGMENT AFTER "tenants/" OR "clusters/" IS THE APPLICATION'S ENV_NAME, not
-    this repository's environment. On the consignado estate that is "production",
-    while var.environment is "prd". Writing "prd" here yields a policy that matches
-    nothing.
+    THE SEGMENT AFTER "tenants/" OR "clusters/" IS THE APPLICATION'S ENV_NAME
+    (e.g. "production"), not this repository's environment (e.g. "prd"). Writing
+    "prd" here yields a policy that matches nothing.
   EOT
 
   type    = list(string)
@@ -133,7 +132,7 @@ variable "deny_secret_path_patterns" {
     one. Empty emits no Deny statement.
 
     AN EXPLICIT DENY IS NOT THE SAME AS A NARROWER ALLOW, and that is the whole
-    reason this variable exists. Two roles on this estate need a broad Allow for
+    reason this variable exists. Two roles need a broad Allow for
     reasons that are measured and not negotiable — tenant-manager because its own
     path builders emit three degenerate shapes that an environment-scoped prefix
     does not match, and External Secrets because it projects for every workload —
@@ -151,7 +150,7 @@ variable "deny_secret_path_patterns" {
     environment segment entirely when the environment string is blank
     (commons/secretsmanager/external.go:92-95), producing
     tenants/{org}/{app}/external/... — three segments, which this pattern misses.
-    On the consignado estate that path is unreachable, because ENV_NAME is a hard
+    That path is unreachable wherever ENV_NAME is a hard
     boot requirement for the gateway and the gateway's own Allow is scoped to
     tenants/production/ anyway, so the two are consistent. An estate where the
     environment is optional needs a second pattern.

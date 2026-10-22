@@ -136,7 +136,7 @@ variable "deny_secret_path_patterns" {
 
   validation {
     condition     = contains(var.deny_secret_path_patterns, "tenants/*/*/*/external/")
-    error_message = "tenants/*/*/*/external/ must be in deny_secret_path_patterns. This role's Allow reaches the Dataprev custody credential, which only the gateway may touch, and the module emits no Deny at all for an empty list — so omitting it plans cleanly and silently drops the carve-out. That is not hypothetical: streaming-hub/secrets shipped without it and its production role held GetSecretValue over every custody secret in the account. The gateway root is the one place this rule does not apply."
+    error_message = "tenants/*/*/*/external/ must be in deny_secret_path_patterns. This role's Allow reaches the Dataprev custody credential, which only the gateway may touch, and the module emits no Deny at all for an empty list — so omitting it plans cleanly and silently drops the carve-out. The gateway root is the one place this rule does not apply."
   }
 
 }
@@ -166,7 +166,7 @@ variable "kms_key_arns" {
 }
 
 variable "additional_policy_names" {
-  description = "Existing customer-managed policies attached to this role by name. THIS IS THE ONE-ROLE DECISION: tenant-manager needs the vault AND its two S3 buckets, and a ServiceAccount carries exactly one role-arn annotation, so the bucket grant is attached here rather than living on a second role nobody can annotate. The name comes from products/tenant-manager/s3, which must be applied first — see the runbook."
+  description = "Existing customer-managed policies attached to this role by name. THIS IS THE ONE-ROLE DECISION: tenant-manager needs the vault AND its two S3 buckets, and a ServiceAccount carries exactly one role-arn annotation, so the bucket grant is attached here rather than living on a second role nobody can annotate. The name comes from products/tenant-manager/s3, which must be applied first."
   type        = list(string)
   default     = []
 }

@@ -54,18 +54,16 @@ variable "secret_path_prefixes" {
   description = <<-EOT
     Vault prefixes the gateway may act on. NO TRAILING "*" — the module appends it.
 
-    THE SEGMENT AFTER "tenants/" IS THE APPLICATION'S ENV_NAME. On this estate it
-    is "production" in BOTH accounts, because a custody reference is re-parsed on
+    THE SEGMENT AFTER "tenants/" IS THE APPLICATION'S ENV_NAME, permanent from the
+    first write, because a custody reference is re-parsed on
     read and demands exact scope equality: rename the environment later and every
-    credential already stored becomes unreadable. It is "production" from the first
-    write, forever.
+    credential already stored becomes unreadable.
 
     One caveat worth knowing before an AccessDenied at 2am: lib-commons omits the
     env segment entirely when the environment string is blank
     (commons/secretsmanager/external.go:92-95), producing tenants/{orgID}/... A
     prefix of "tenants/production/" does not match that. Cover it deliberately if
-    a blank ENV_NAME is reachable; on this estate ENV_NAME is a hard boot
-    requirement, so it is not.
+    a blank ENV_NAME is reachable.
   EOT
 
   type    = list(string)
@@ -102,7 +100,7 @@ variable "allow_list_secrets" {
 }
 
 variable "additional_policy_names" {
-  description = "Existing customer-managed policies attached to this role by name. THIS IS THE ONE-ROLE DECISION: the gateway needs the vault AND the WORM custody bucket, and a ServiceAccount carries exactly one role-arn annotation. Applying two roles and annotating with one produces a gateway that reads the vault and cannot write custody artefacts, discovered on the first averbação. The name comes from products/br-consignado-gw/s3, which must be applied first — see the runbook."
+  description = "Existing customer-managed policies attached to this role by name. THIS IS THE ONE-ROLE DECISION: the gateway needs the vault AND the WORM custody bucket, and a ServiceAccount carries exactly one role-arn annotation. Applying two roles and annotating with one produces a gateway that reads the vault and cannot write custody artefacts, discovered on the first averbação. The name comes from products/br-consignado-gw/s3, which must be applied first."
   type        = list(string)
   default     = []
 }

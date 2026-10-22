@@ -13,8 +13,8 @@ so rotating the certificate can never overwrite the OAuth secret.
 
 On read the gateway **re-parses the stored reference and demands exact scope
 equality**. A credential written under one environment name becomes unreadable the
-day that name changes. On this estate `{env}` is **`production`** from the first
-write, in both accounts, forever. Note that `var.environment` here is `prd`: the
+day that name changes. In prd, `{env}` is **`production`** from the first
+write, forever, while `var.environment` is `prd`: the
 repository's environment vocabulary names the IAM objects, the application's
 `ENV_NAME` names the vault path. They differ, and the difference is load-bearing.
 

@@ -17,7 +17,7 @@
 #   means a credential written under one environment name is unreadable under
 #   another. The environment name is therefore permanent from the first write.
 #
-#   ON THIS ESTATE THAT NAME IS "production", NOT "prd". var.environment here is
+#   IN prd THAT NAME IS "production", NOT "prd". var.environment here is
 #   the repository's vocabulary and names the IAM objects; the vault segment is the
 #   application's ENV_NAME and lives in var.secret_path_prefixes. They differ, and
 #   the difference is load-bearing.
