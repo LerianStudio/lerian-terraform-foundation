@@ -189,15 +189,19 @@ there, the role is there, and the claim simply never binds.
 That is about the version a cluster was **created** at, not the one it runs
 now: a cluster created earlier and upgraded in place keeps the `gp2` default it
 was born with, and `cluster_version` takes any version string with no floor
-enforced here. Check `kubectl get sc` before applying the manifest below.
-Kubernetes allows more than one default and gives a classless PVC the most
-recently created one, so leaving another class annotated makes the one a claim
-lands on a matter of creation order — clear the annotation off every default the
-cluster already has, `gp2` or otherwise, so `gp3` is the only one left.
+enforced here. Check `kubectl get sc` first and clear the annotation off every
+default already there, `gp2` or otherwise: with more than one default, a
+classless PVC gets the most recently created, so which one it lands on comes
+down to creation order.
 
-Nothing here creates it, because a StorageClass is a Kubernetes object and every
-stack in this repository configures the `aws` provider only. Apply it alongside
-the controllers:
+The addon can create a default class itself — `configuration_values =
+jsonencode({ defaultStorageClass = { enabled = true } })` on
+`aws-ebs-csi-driver` gives `ebs-csi-default-sc` (gp3, `WaitForFirstConsumer`,
+expandable). This stack leaves it off on purpose: that class sets no
+`encrypted` parameter, so its volumes are only encrypted if the account has EBS
+encryption by default on, and its `reclaimPolicy` is fixed at `Delete`. The
+class below states both, and belongs with the controllers, under whatever
+applies them:
 
 ```yaml
 apiVersion: storage.k8s.io/v1
@@ -217,7 +221,9 @@ allowVolumeExpansion: true
 
 `reclaimPolicy: Delete` discards the volume together with the claim, which is
 what an evaluation environment wants and what production does not: for prd use
-`Retain`, so deleting a release does not take the data with it.
+`Retain`, so deleting a release does not take the data with it. The price is
+that a released volume stays in the account, billed, until someone deletes it
+— `Retain` makes cleanup a manual step.
 
 Notes:
 
