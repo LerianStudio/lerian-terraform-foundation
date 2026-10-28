@@ -175,6 +175,56 @@ controller's service account (`eks.amazonaws.com/role-arn` annotation).
 | [ExternalDNS](https://artifacthub.io/packages/helm/external-dns/external-dns) | Services/Ingresses should publish their hostnames into a Route53 hosted zone the client owns | `external_dns_role_arn` | `kube-system:external-dns` |
 | [cert-manager](https://artifacthub.io/packages/helm/cert-manager/cert-manager) | TLS certificates via Route53 DNS-01 | `cert_manager_role_arn` | `cert-manager:cert-manager` |
 
+### The default StorageClass
+
+Unlike the controllers above, the **EBS CSI driver is already installed** by this
+stack, as the `aws-ebs-csi-driver` addon, with its IRSA role wired on
+(`ebs_csi_role_arn`). What the cluster still cannot do is honour a
+PersistentVolumeClaim that names no class: from EKS 1.30 on, `gp2` ships
+without the `storageclass.kubernetes.io/is-default-class` annotation, and this
+stack adds nothing to replace it. A chart with a PVC therefore stays `Pending`
+until a default class exists, and the reason is easy to miss — the driver is
+there, the role is there, and the claim simply never binds.
+
+That is about the version a cluster was **created** at, not the one it runs
+now: a cluster created earlier and upgraded in place keeps the `gp2` default it
+was born with, and `cluster_version` takes any version string with no floor
+enforced here. Check `kubectl get sc` first and clear the annotation off every
+default already there, `gp2` or otherwise: with more than one default, a
+classless PVC gets the most recently created, so which one it lands on comes
+down to creation order.
+
+The addon can create a default class itself — `configuration_values =
+jsonencode({ defaultStorageClass = { enabled = true } })` on
+`aws-ebs-csi-driver` gives `ebs-csi-default-sc` (gp3, `WaitForFirstConsumer`,
+expandable). This stack leaves it off on purpose: that class sets no
+`encrypted` parameter, so its volumes are only encrypted if the account has EBS
+encryption by default on, and its `reclaimPolicy` is fixed at `Delete`. The
+class below states both, and belongs with the controllers, under whatever
+applies them:
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  encrypted: "true"
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+```
+
+`reclaimPolicy: Delete` discards the volume together with the claim, which is
+what an evaluation environment wants and what production does not: for prd use
+`Retain`, so deleting a release does not take the data with it. The price is
+that a released volume stays in the account, billed, until someone deletes it
+— `Retain` makes cleanup a manual step.
+
 Notes:
 
 - The Cluster Autoscaler also needs the ASG auto-discovery tags. This stack adds
