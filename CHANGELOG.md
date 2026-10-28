@@ -8,6 +8,20 @@ Features:
 
 Improvements:
 
+- Add test coverage for the `CreatedBy` attribute in the AWS bootstrap tag contract to ensure it functions as expected. (@bedatty)
+
+[Compare changes](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.14.0...v1.15.0)
+
+---
+
+## [1.15.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.15.0)
+
+Features:
+
+- Record the creator of a state bucket in AWS, ensuring this information is captured once. (@bedatty)
+
+Improvements:
+
 - Add test coverage for the `CreatedBy` attribute in the AWS bootstrap tag contract to verify its correct implementation. (@bedatty)
 
 [Compare changes](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.14.0...v1.15.0)
