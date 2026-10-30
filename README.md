@@ -239,8 +239,10 @@ terraform plan  -var-file=envs/dev.tfvars
 terraform apply -var-file=envs/dev.tfvars
 ```
 
-Repeat in every directory of the product. For midaz that is `postgres`, `documentdb`,
-`valkey` and `rabbitmq`, in any order.
+Repeat both blocks in every directory of the product. Replace `postgres` with the
+directory name in both `cd` lines and in the state key. For midaz the directories are
+`postgres`, `documentdb`, `valkey` and `rabbitmq`, in any order. A key that names another
+stack's state makes the plan destroy that stack's resources.
 
 ## 7. Hand off to Helm
 
@@ -266,9 +268,12 @@ workload starts without its database password.
 
 In the `eso` tfvars, list `<product>-<env>-` in `secret_path_prefixes` for every product
 you deploy, plus `shared-<env>-` when a stack uses `mode = "shared"`. The example's
-per-product entries name other products and `prd`. Keep its `AmazonMSK_`, `tenants/`,
-`clusters/` and `installation/` entries: MSK credentials are named
-`AmazonMSK_<product>-<env>-msk`, which no product prefix matches.
+per-product entries name other products and `prd`. Replace its `AmazonMSK_` entry with
+`AmazonMSK_<product>-<env>-` for each `msk` stack with `mode = "dedicated"`, and
+`AmazonMSK_shared-<env>-` when an `msk` stack uses `mode = "shared"`. Keep `tenants/`,
+`clusters/` and `installation/` only when you deploy tenant-manager, streaming-hub or
+br-consignado-gw. These three reach every environment in the same account and region,
+so give each environment its own AWS account when you keep them.
 
 Replace the `<MSK-SCRAM-CMK-ARN>` entry in `kms_key_arns` with the `scram_kms_key_arn`
 output of each `msk` stack that created a cluster, or delete it when no MSK exists. The
