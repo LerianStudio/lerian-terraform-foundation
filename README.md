@@ -465,7 +465,8 @@ Report vulnerabilities per [SECURITY.md](SECURITY.md), not through public issues
 
 ## License
 
-Apache 2.0. See [LICENSE](LICENSE).
+Copyright 2025 Lerian Studio Ltd. Licensed under the Elastic License 2.0. See
+[LICENSE](LICENSE).
 
 ## Support
 
