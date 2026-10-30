@@ -94,9 +94,16 @@ stays local, in one workspace per environment.
 
 ```bash
 cd "$(git rev-parse --show-toplevel)/examples/aws/bootstrap"
-cp -n envs/dev.tfvars-example envs/dev.tfvars # set region
 terraform init
-terraform workspace new dev                   # later runs: terraform workspace select dev
+terraform workspace new dev
+cp -n envs/dev.tfvars-example envs/dev.tfvars
+```
+
+Set `region` in `envs/dev.tfvars`. On later runs, use `terraform workspace select dev`
+instead of `new`.
+
+```bash
+cd "$(git rev-parse --show-toplevel)/examples/aws/bootstrap"
 terraform plan  -var-file=envs/dev.tfvars
 terraform apply -var-file=envs/dev.tfvars
 ```
@@ -144,7 +151,13 @@ cd "$(git rev-parse --show-toplevel)/examples/aws/infra-base/vpc"
 terraform init \
   -backend-config=../../backend/dev.hcl \
   -backend-config="key=aws/infra-base/vpc/terraform.tfstate"
-cp -n envs/dev.tfvars-example envs/dev.tfvars   # region and availability_zones must agree
+cp -n envs/dev.tfvars-example envs/dev.tfvars
+```
+
+In `envs/dev.tfvars`, set `region`. `region` and `availability_zones` must agree.
+
+```bash
+cd "$(git rev-parse --show-toplevel)/examples/aws/infra-base/vpc"
 terraform plan  -var-file=envs/dev.tfvars
 terraform apply -var-file=envs/dev.tfvars
 ```
@@ -160,10 +173,11 @@ terraform init \
   -backend-config=../../backend/dev.hcl \
   -backend-config="key=aws/infra-base/eks/terraform.tfstate"
 cp -n envs/dev.tfvars-example envs/dev.tfvars
-curl -s https://checkip.amazonaws.com        # your public egress address
+curl -s https://checkip.amazonaws.com
 ```
 
-In `envs/dev.tfvars`, replace the placeholder in `allowed_api_access_cidrs` with
+The `curl` prints your public egress address. In `envs/dev.tfvars`, set `region` to the
+region of the VPC, and replace the placeholder in `allowed_api_access_cidrs` with
 `"<that address>/32"`. The plan fails until you do.
 
 In `prd`, also replace `<ROUTE53-ZONE-ARN>` in `external_dns_hosted_zone_arns` and
@@ -177,6 +191,7 @@ it has no CIDR placeholder. `kubectl` and `helm` must run from inside the VPC: a
 a VPN or a runner in the VPC. See [Important information](#important-information).
 
 ```bash
+cd "$(git rev-parse --show-toplevel)/examples/aws/infra-base/eks"
 terraform plan  -var-file=envs/dev.tfvars
 terraform apply -var-file=envs/dev.tfvars
 ```
@@ -184,6 +199,7 @@ terraform apply -var-file=envs/dev.tfvars
 This creates the cluster `lerian-dev-eks`. Write it into your kubeconfig:
 
 ```bash
+cd "$(git rev-parse --show-toplevel)/examples/aws/infra-base/eks"
 $(terraform output -raw update_kubeconfig)
 ```
 
@@ -204,13 +220,11 @@ terraform init \
   -backend-config=../../../backend/dev.hcl \
   -backend-config="key=aws/products/midaz/postgres/terraform.tfstate"
 cp -n envs/dev.tfvars-example envs/dev.tfvars
-terraform plan  -var-file=envs/dev.tfvars
-terraform apply -var-file=envs/dev.tfvars
 ```
 
-Repeat in every directory of the product. For midaz that is `postgres`, `documentdb`,
-`valkey` and `rabbitmq`, in any order. In each tfvars file, check:
+In `envs/dev.tfvars`, check:
 
+- **`region`.** The region of the VPC.
 - **`mode`.** `dedicated` creates a datastore for the product. `shared` creates nothing
   and uses the one from `examples/aws/products/shared-resources/<service>`. Apply that
   stack first, the same way.
@@ -218,6 +232,15 @@ Repeat in every directory of the product. For midaz that is `postgres`, `documen
   cluster from step 5 must exist.
 - **Stacks with only `envs/prd.tfvars-example`.** Copy it under your environment's name
   and review every value, `environment` and `region` included.
+
+```bash
+cd "$(git rev-parse --show-toplevel)/examples/aws/products/midaz/postgres"
+terraform plan  -var-file=envs/dev.tfvars
+terraform apply -var-file=envs/dev.tfvars
+```
+
+Repeat in every directory of the product. For midaz that is `postgres`, `documentdb`,
+`valkey` and `rabbitmq`, in any order.
 
 ## 7. Hand off to Helm
 
@@ -243,10 +266,13 @@ workload starts without its database password.
 
 In the `eso` tfvars, list `<product>-<env>-` in `secret_path_prefixes` for every product
 you deploy, plus `shared-<env>-` when a stack uses `mode = "shared"`. The example's
-entries name other products and `prd`. Replace the `<MSK-SCRAM-CMK-ARN>` entry in
-`kms_key_arns` with the `scram_kms_key_arn` output of each `msk` stack that created a
-cluster, or delete it when no MSK exists. The plan accepts the placeholder, and the apply
-fails on it.
+per-product entries name other products and `prd`. Keep its `AmazonMSK_`, `tenants/`,
+`clusters/` and `installation/` entries: MSK credentials are named
+`AmazonMSK_<product>-<env>-msk`, which no product prefix matches.
+
+Replace the `<MSK-SCRAM-CMK-ARN>` entry in `kms_key_arns` with the `scram_kms_key_arn`
+output of each `msk` stack that created a cluster, or delete it when no MSK exists. The
+plan accepts the placeholder, and the apply fails on it.
 
 The charts are at **[LerianStudio/helm](https://github.com/LerianStudio/helm)**.
 
