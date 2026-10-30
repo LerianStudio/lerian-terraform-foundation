@@ -111,8 +111,8 @@ encrypt        = true
 ```
 
 The file is gitignored because it carries your account id. Keep the local state of the
-bootstrap stack as well: its [README](examples/aws/bootstrap/README.md) shows how to keep
-it or move it into the new bucket.
+bootstrap stack as well: copy `examples/aws/bootstrap/terraform.tfstate.d/` to a private
+repository. This checkout's `.gitignore` excludes it.
 
 ## 3. Point each stack at the backend
 
@@ -160,13 +160,19 @@ terraform init \
   -backend-config=../../backend/dev.hcl \
   -backend-config="key=aws/infra-base/eks/terraform.tfstate"
 cp envs/dev.tfvars-example envs/dev.tfvars
+curl -s https://checkip.amazonaws.com        # your public egress address
 ```
 
-In `envs/dev.tfvars`, replace the placeholder in `allowed_api_access_cidrs` with your
-public egress address. The plan fails until you do.
+In `envs/dev.tfvars`, replace the placeholder in `allowed_api_access_cidrs` with
+`"<that address>/32"`. The plan fails until you do.
+
+In `prd`, also replace `<ROUTE53-ZONE-ARN>` in `external_dns_hosted_zone_arns` and
+`cert_manager_hosted_zone_arns`. Use the ARN of a public hosted zone you own, or the
+`zone_arn` output of `examples/aws/products/lerian-platform/dns`, applied before this
+stack. With no zone, set `create_external_dns_role` and `create_cert_manager_role` to
+`false`. The plan accepts the placeholder, and the apply fails on it.
 
 ```bash
-curl -s https://checkip.amazonaws.com        # add /32 to this address
 terraform plan  -var-file=envs/dev.tfvars
 terraform apply -var-file=envs/dev.tfvars
 ```
@@ -211,20 +217,25 @@ Repeat in every directory of the product. For midaz that is `postgres`, `documen
 
 ## 7. Hand off to Helm
 
-Every product stack exports `helm_values`: the values it can fill in the product's chart,
-under the names the chart reads.
+Every product stack exports `helm_values`: the chart settings this stack can fill in,
+mostly environment variables. It is not a values file for `helm -f`. The product's README
+says where each entry merges: for midaz, each group goes into `<component>.configmap`.
 
 ```bash
 cd examples/aws/products/midaz/postgres
 terraform output -json helm_values
 ```
 
-The product's README explains where each value goes in the chart. Some stacks return an
-empty `helm_values` on purpose, for example when the chart wants a URL that embeds the
-password. Wire those from outputs such as `endpoint`, `port` and `secret_name`.
+Some stacks return an empty `helm_values` on purpose, for example when the chart wants a
+URL that embeds the password. Wire those from outputs such as `endpoint`, `port` and
+`secret_name`.
 
 No output carries a password. Datastore stacks export `secret_name` and `secret_arn`,
-and the password stays in AWS Secrets Manager.
+and the password stays in AWS Secrets Manager. External Secrets Operator, which you
+install, carries it into a Kubernetes Secret. Its IAM role comes from
+`examples/aws/products/lerian-platform/eso`: apply it like a product stack, after step 5,
+and put its `iam_role_arn` output on the operator's service account. Without it, every
+workload starts without its database password.
 
 The charts are at **[LerianStudio/helm](https://github.com/LerianStudio/helm)**.
 
