@@ -74,7 +74,7 @@ git clone --branch <tag> https://github.com/LerianStudio/lerian-terraform-founda
 cd lerian-terraform-foundation
 ```
 
-Every `cd` below is relative to the root of that checkout.
+Every `cd` below works from anywhere inside that checkout.
 
 Before every apply, check which account your credentials reach:
 
@@ -93,8 +93,8 @@ it once per environment. It cannot keep its state in the bucket it creates, so i
 stays local, in one workspace per environment.
 
 ```bash
-cd examples/aws/bootstrap
-cp envs/dev.tfvars-example envs/dev.tfvars   # set region
+cd "$(git rev-parse --show-toplevel)/examples/aws/bootstrap"
+cp -n envs/dev.tfvars-example envs/dev.tfvars # set region
 terraform init
 terraform workspace new dev                   # later runs: terraform workspace select dev
 terraform plan  -var-file=envs/dev.tfvars
@@ -127,10 +127,10 @@ bucket already does.
 | `examples/aws/infra-base/eks` | `../../backend/<env>.hcl` | `aws/infra-base/eks/terraform.tfstate` |
 | `examples/aws/products/<product>/<service>` | `../../../backend/<env>.hcl` | `aws/products/<product>/<service>/terraform.tfstate` |
 
-To point a directory at another environment, run `terraform init -reconfigure` with that
-environment's file. Without `-reconfigure`, Terraform offers to copy the state into the
-other bucket. Recent Terraform versions also warn that `dynamodb_table` is deprecated in
-favour of `use_lockfile`. The warning does not stop `init`.
+Use one checkout per environment. A directory remembers its backend in `.terraform/`, and
+`plan`, `apply` and `destroy` act on that environment whatever `-var-file` names. Recent
+Terraform versions warn that `dynamodb_table` is deprecated in favour of `use_lockfile`.
+The warning does not stop `init`.
 
 Each stack ships its variables as `envs/<env>.tfvars-example`. Copy the file to
 `envs/<env>.tfvars` and edit it before you plan. `*.tfvars` is gitignored. Use one region
@@ -140,11 +140,11 @@ examples do not all use the same region.
 ## 4. Deploy the network
 
 ```bash
-cd examples/aws/infra-base/vpc
+cd "$(git rev-parse --show-toplevel)/examples/aws/infra-base/vpc"
 terraform init \
   -backend-config=../../backend/dev.hcl \
   -backend-config="key=aws/infra-base/vpc/terraform.tfstate"
-cp envs/dev.tfvars-example envs/dev.tfvars   # region and availability_zones must agree
+cp -n envs/dev.tfvars-example envs/dev.tfvars   # region and availability_zones must agree
 terraform plan  -var-file=envs/dev.tfvars
 terraform apply -var-file=envs/dev.tfvars
 ```
@@ -155,11 +155,11 @@ remote state. Keep `product = "lerian"` in both `infra-base` stacks so the names
 ## 5. Deploy the cluster
 
 ```bash
-cd examples/aws/infra-base/eks
+cd "$(git rev-parse --show-toplevel)/examples/aws/infra-base/eks"
 terraform init \
   -backend-config=../../backend/dev.hcl \
   -backend-config="key=aws/infra-base/eks/terraform.tfstate"
-cp envs/dev.tfvars-example envs/dev.tfvars
+cp -n envs/dev.tfvars-example envs/dev.tfvars
 curl -s https://checkip.amazonaws.com        # your public egress address
 ```
 
@@ -171,6 +171,10 @@ In `prd`, also replace `<ROUTE53-ZONE-ARN>` in `external_dns_hosted_zone_arns` a
 `zone_arn` output of `examples/aws/products/lerian-platform/dns`, applied before this
 stack. With no zone, set `create_external_dns_role` and `create_cert_manager_role` to
 `false`. The plan accepts the placeholder, and the apply fails on it.
+
+The prd example has no public API endpoint (`cluster_endpoint_public_access = false`), so
+it has no CIDR placeholder. `kubectl` and `helm` must run from inside the VPC: a bastion,
+a VPN or a runner in the VPC. See [Important information](#important-information).
 
 ```bash
 terraform plan  -var-file=envs/dev.tfvars
@@ -195,11 +199,11 @@ A product is a directory under `examples/aws/products/`, with one stack per data
 Its README lists the stacks and what each one needs.
 
 ```bash
-cd examples/aws/products/midaz/postgres
+cd "$(git rev-parse --show-toplevel)/examples/aws/products/midaz/postgres"
 terraform init \
   -backend-config=../../../backend/dev.hcl \
   -backend-config="key=aws/products/midaz/postgres/terraform.tfstate"
-cp envs/dev.tfvars-example envs/dev.tfvars
+cp -n envs/dev.tfvars-example envs/dev.tfvars
 terraform plan  -var-file=envs/dev.tfvars
 terraform apply -var-file=envs/dev.tfvars
 ```
@@ -222,7 +226,7 @@ mostly environment variables. It is not a values file for `helm -f`. The product
 says where each entry merges: for midaz, each group goes into `<component>.configmap`.
 
 ```bash
-cd examples/aws/products/midaz/postgres
+cd "$(git rev-parse --show-toplevel)/examples/aws/products/midaz/postgres"
 terraform output -json helm_values
 ```
 
@@ -237,9 +241,22 @@ install, carries it into a Kubernetes Secret. Its IAM role comes from
 and put its `iam_role_arn` output on the operator's service account. Without it, every
 workload starts without its database password.
 
+In the `eso` tfvars, list `<product>-<env>-` in `secret_path_prefixes` for every product
+you deploy, plus `shared-<env>-` when a stack uses `mode = "shared"`. The example's
+entries name other products and `prd`. Replace the `<MSK-SCRAM-CMK-ARN>` entry in
+`kms_key_arns` with the `scram_kms_key_arn` output of each `msk` stack that created a
+cluster, or delete it when no MSK exists. The plan accepts the placeholder, and the apply
+fails on it.
+
 The charts are at **[LerianStudio/helm](https://github.com/LerianStudio/helm)**.
 
 ## 8. Destroy
+
+First remove what Kubernetes created in the VPC. Uninstall the product Helm releases, and
+delete every Ingress and every Service of type `LoadBalancer`. Do this while the load
+balancer and ingress controllers still run, so they delete the load balancers they
+created. Delete the PVCs whose volumes you do not keep. None of these is in Terraform
+state, and `infra-base/vpc` cannot be destroyed while those load balancers exist.
 
 Destroy in reverse order: the product stacks, then `shared-resources`, then
 `infra-base/eks`, then `infra-base/vpc`. In each directory:
