@@ -16,6 +16,10 @@ terraform.tfstate.d/
 # examples/aws/backend/README.md and .gitkeep remain tracked.
 examples/aws/backend/*.hcl
 
+# A local environment-to-account mapping. It carries AWS account ids, so it never
+# enters this repository.
+examples/aws/environments.conf
+
 # tfplan files. Terraform saved plans are ZIP archives that embed the full state
 # and config, including account ids and any value marked sensitive - they must
 # never be committed. The bare `tfplan` and `*.tfplan` patterns below missed
