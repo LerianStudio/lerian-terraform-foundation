@@ -1,25 +1,20 @@
 # Contributing to lerian-terraform-foundation
 
-Thank you for your interest in contributing to lerian-terraform-foundation! This document provides guidelines and instructions for contributing.
+This document says how to report a problem and how Lerian engineers change this repository.
 
-## Development Workflow
+## Issues and pull requests
 
-1. Fork the repository
-2. Create a new branch from `main` following the naming convention:
-   - `feature/*` for new features
-   - `fix/*` for bug fixes
-3. Make your changes
-4. Ensure all tests pass and code is properly formatted
-5. Submit a pull request to the `develop` branch
-6. After review and testing, changes will be merged into `main`
+Anyone can open an [issue](https://github.com/LerianStudio/lerian-terraform-foundation/issues) to report a bug or ask for a change. Describe the root you deploy, what happened and what you expected. Report a vulnerability per [SECURITY.md](SECURITY.md), not through a public issue.
 
-## Git Flow
+Lerian Studio does not accept pull requests from outside contributors. Lerian engineers make every change to this repository.
 
-We follow this git flow:
-1. Feature/fix branches from main
-2. Pull requests to develop
-3. Testing on develop
-4. Merge into main
+## Workflow for Lerian engineers
+
+1. Run `make hooks` once to install the git hooks.
+2. Create a branch from `main`: `feat/*` for new features, `fix/*` for bug fixes.
+3. Make your changes.
+4. Ensure all tests pass and code is properly formatted.
+5. Open a pull request against `main`.
 
 ## Commit Messages
 
