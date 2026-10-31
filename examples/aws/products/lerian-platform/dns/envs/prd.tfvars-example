@@ -23,9 +23,8 @@ environment = "prd"
 ################################################################################
 # The names
 #
-# BOTH PLACEHOLDERS BREAK THE PLAN UNTIL FILLED IN — the apply tooling aborts on any
-# "<...>" token outside a comment, which is the repository's convention for a value
-# that must not be guessed.
+# BOTH PLACEHOLDERS BREAK THE PLAN UNTIL FILLED IN: the zone_name and
+# parent_zone_name validations reject them.
 #
 # zone_name differs per ACCOUNT: each account holds its own delegated subdomain of
 # one parent, which is what keeps the accounts independent at the DNS layer.

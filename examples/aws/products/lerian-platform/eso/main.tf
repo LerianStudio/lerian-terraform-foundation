@@ -2,11 +2,8 @@
 # products/lerian-platform/eso — the External Secrets Operator identity
 #
 # WHY A PSEUDO-PRODUCT CALLED lerian-platform. This root is cluster-level: it
-# belongs to no product. It nonetheless lives under products/ because that is the
-# ONLY place the tooling that applies this tree discovers roots — it walks
-# products/*/* and nothing else, and the infra-base stage is fixed to exactly vpc
-# and eks. A directory at infra-base/eso would be invisible to it and would have to be applied by hand, out of the guarded
-# ordering. See ../README.md.
+# belongs to no product. It is applied like a product stack after infra-base/eks,
+# so it lives under products/. See ../README.md.
 #
 # WHAT THIS ROLE IS FOR. Every datastore module here writes its generated
 # credential to Secrets Manager, and nothing carries it into a pod. External

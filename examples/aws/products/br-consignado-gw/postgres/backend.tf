@@ -13,10 +13,9 @@
 # where both backend/ and _modules/ live.
 #
 # Do NOT commit placeholder values here, of the PUT-YOUR-BUCKET-NAME-HERE kind.
-# Nothing in this tree would catch them: the placeholder check reads
-# the env tfvars, and the only check that greps backend.tf is deploy-legacy.sh,
-# which covers the legacy providers and says so in its own comment. A placeholder
-# committed here reaches an init unnoticed.
+# Nothing in this tree would catch them: the only check that greps backend.tf is
+# deploy-legacy.sh, which covers the legacy providers and says so in its own
+# comment. A placeholder committed here reaches an init unnoticed.
 ################################################################################
 
 terraform {

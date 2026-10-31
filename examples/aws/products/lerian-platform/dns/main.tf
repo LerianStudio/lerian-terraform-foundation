@@ -12,11 +12,8 @@
 # What DOES exist is the IRSA for external-dns and cert-manager, which is the
 # permission to write records, not the zone to write them into.
 #
-# WHY IT LIVES UNDER products/ WHEN IT IS NOT A PRODUCT. Tooling that applies
-# this tree discovers roots by walking products/*/* and nothing else, and its
-# infra-base stage is fixed to exactly vpc and eks. A root at infra-base/dns would
-# be invisible to it: no ordering, no account guard, no state key — applied by hand or not at all. products/lerian-platform/dns is
-# discovered, ordered and guarded like everything else.
+# WHY IT LIVES UNDER products/ WHEN IT IS NOT A PRODUCT. It is cluster-level, but
+# applied like a product stack after infra-base/eks. See ../README.md.
 #
 ################################################################################
 # DELEGATION, NOT TRANSFER — and the one manual step on the whole estate
