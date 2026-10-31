@@ -95,11 +95,11 @@ resource "azurerm_postgresql_flexible_server" "primary" {
   public_network_access_enabled = false
 
   lifecycle {
-    # Prevent Terraform from attempting in-place zone/HA changes on existing servers
-    # which Azure rejects. If HA/zone must change, recreate the server explicitly.
+    # A failover swaps the primary zone and the standby zone, so Terraform ignores
+    # those two fields. HA on or off still applies.
     ignore_changes = [
       zone,
-      high_availability,
+      high_availability[0].standby_availability_zone,
     ]
   }
 
