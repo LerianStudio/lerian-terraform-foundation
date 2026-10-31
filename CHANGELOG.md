@@ -1,5 +1,25 @@
 # Lerian-terraform-foundation Changelog
 
+## [1.16.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.16.0)
+
+Features:
+- Added zone redundancy and high availability configuration for PostgreSQL Flexible Server and improved validation checks. (@guimoreirar)
+
+Fixes:
+- Applied high availability toggles in place and raised the Azure Kubernetes Service provider version floor. (@fredcamaral)
+- Ensured no standby configuration without zone redundancy and maintained compatibility for Redis inputs. (@fredcamaral)
+- Pinned the Azure Redis provider to the `3.x` line. (@bedatty)
+
+Improvements:
+- Standardized the agent compatibility policy in documentation. (@fredcamaral)
+- Formatted the Azure Redis provider block for better readability. (@bedatty)
+- Migrated CI workflow jobs to Blacksmith runners. (@fredcamaral)
+- Consolidated the `main` branch as the only branch by integrating fixes from `develop`. (@fredcamaral)
+
+[Compare changes](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.15.1...v1.16.0)
+
+---
+
 ## [1.15.1](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.15.1)
 
 Features:
