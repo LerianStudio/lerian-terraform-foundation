@@ -2,7 +2,7 @@
 # Uniform datastore contract outputs
 #
 # Same names as every other Lerian datastore module, so a product root stack and
-# lerian-infra can treat MSK like postgres, valkey or rabbitmq.
+# a consumer can treat MSK like postgres, valkey or rabbitmq.
 ################################################################################
 
 output "mode" {

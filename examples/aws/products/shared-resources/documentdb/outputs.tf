@@ -158,7 +158,7 @@ output "tls_enabled" {
 ################################################################################
 
 output "helm_values" {
-  description = "Chart env vars this datastore fills in (midaz naming — see the header), ready to merge into ledger.configmap (and crm.configmap for the unsuffixed keys). Pair it with mongodb.enabled = false and mongodb.external = true so the bundled Bitnami subchart is not deployed alongside DocumentDB. NOTE: this map is FLAT and midaz-named, and it is operator reference only — the tier serves several products and cannot know any one chart's components. Programmatic consumers must not read it: `lerian-infra --action helm-values` builds each product's values from this root's FACTS (endpoint, port, username, secret_name) via pkg/infra/chartmap.go, keyed by that product's chart components."
+  description = "Chart env vars this datastore fills in (midaz naming — see the header), ready to merge into ledger.configmap (and crm.configmap for the unsuffixed keys). Pair it with mongodb.enabled = false and mongodb.external = true so the bundled Bitnami subchart is not deployed alongside DocumentDB. NOTE: this map is FLAT and midaz-named, and it is operator reference only — the tier serves several products and cannot know any one chart's components. Programmatic consumers must not read it: build each product's values from this root's FACTS (endpoint, port, username, secret_name) instead, keyed by that product's chart components."
   value = {
     MONGO_ONBOARDING_URI        = "mongodb"
     MONGO_ONBOARDING_HOST       = module.documentdb.endpoint

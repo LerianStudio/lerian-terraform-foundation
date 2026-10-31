@@ -147,8 +147,8 @@ output "subnet_group_name" {
 # — the CRM deployment has no Redis variables at all, which is why there is no "crm"
 # entry rather than an empty one.
 #
-# The same shape is produced by pkg/infra/chartmap.go for shared mode. The two must
-# agree: TestMidazShapeIsTheSameInBothModes fails when they drift.
+# Shared mode produces the same shape. The two must
+# agree.
 #
 # Two shapes that look like mistakes and are not:
 #   REDIS_HOST carries "host:port" — the chart dropped REDIS_PORT in 3.0.

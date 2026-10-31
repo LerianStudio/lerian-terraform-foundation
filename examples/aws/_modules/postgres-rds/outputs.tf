@@ -2,7 +2,7 @@
 # Uniform datastore contract
 #
 # These seven outputs carry the same names in every _modules datastore so a
-# product root stack and lerian-infra can treat postgres, valkey, docdb,
+# product root stack and any consumer can treat postgres, valkey, docdb,
 # rabbitmq and msk identically.
 #
 # `endpoint` is the RAW AWS hostname in BOTH modes. There is no dns_name output

@@ -12,11 +12,10 @@
 # What DOES exist is the IRSA for external-dns and cert-manager, which is the
 # permission to write records, not the zone to write them into.
 #
-# WHY IT LIVES UNDER products/ WHEN IT IS NOT A PRODUCT. lerian-infra discovers
-# roots by walking products/*/* and nothing else, and its infra-base stage is
-# hardcoded to exactly vpc and eks (pkg/infra/discover.go:36-78, :128-153). A root
-# at infra-base/dns would be invisible to the CLI: no ordering, no account guard,
-# no state key — applied by hand or not at all. products/lerian-platform/dns is
+# WHY IT LIVES UNDER products/ WHEN IT IS NOT A PRODUCT. Tooling that applies
+# this tree discovers roots by walking products/*/* and nothing else, and its
+# infra-base stage is fixed to exactly vpc and eks. A root at infra-base/dns would
+# be invisible to it: no ordering, no account guard, no state key — applied by hand or not at all. products/lerian-platform/dns is
 # discovered, ordered and guarded like everything else.
 #
 ################################################################################

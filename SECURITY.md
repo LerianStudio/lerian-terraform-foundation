@@ -18,9 +18,6 @@ We acknowledge within two business days.
 | ------- | --------- |
 | 1.x     | yes       |
 
-The CLI that drives these templates lives in `LerianStudio/lerian-infra-cli` and has
-its own SECURITY.md; report CLI issues there.
-
 ## What this repository does and does not hold
 
 The templates provision AWS infrastructure, so the security boundary is worth stating

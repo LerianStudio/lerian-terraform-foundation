@@ -9,11 +9,10 @@ Cluster-level roots that belong to no product.
 
 ## Why a pseudo-product under `products/`
 
-`lerian-infra` discovers roots by walking `products/*/*` and nothing else, and its
-`infra-base` stage is hardcoded to exactly `vpc` and `eks`
-(`pkg/infra/discover.go:36-78`, `:128-153`). A root at `infra-base/dns` would be
-invisible to the CLI: no ordering, no account guard, no derived state key — applied
-by hand or not at all. Living here buys all three, at the cost of a name that reads
+Tooling that applies this tree discovers roots by walking `products/*/*` and nothing
+else, and the `infra-base` stage is fixed to exactly `vpc` and `eks`. A root at
+`infra-base/dns` would be invisible to it: no ordering, no account guard, no derived
+state key — applied by hand or not at all. Living here buys all three, at the cost of a name that reads
 like a product and is not one.
 
 Both roots run in the products stage, which is after `infra-base/eks`. Neither is
