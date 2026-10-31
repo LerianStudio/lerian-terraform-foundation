@@ -461,8 +461,8 @@ checks the Conventional Commits format, and the pre-commit hook runs `terraform 
 make hooks
 ```
 
-Branch from `main`, commit with [conventional
-commits](https://www.conventionalcommits.org/), and open a PR against `main`.
+This repository has one branch, `main`. There is no `develop`. Branch from `main`, commit
+with [conventional commits](https://www.conventionalcommits.org/), and open a PR against `main`.
 
 ## Security
 

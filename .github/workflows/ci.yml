@@ -1,11 +1,11 @@
 name: Terraform CI/CD
 
-# Trigger workflow on push to main/develop and PR events
+# Trigger workflow on push to main and PR events
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main ]
     types:
       - opened      # When PR is created
       - edited      # When PR description/title is edited

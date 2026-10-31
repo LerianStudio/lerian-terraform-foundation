@@ -10,6 +10,8 @@ Lerian Studio does not accept pull requests from outside contributors. Lerian en
 
 ## Workflow for Lerian engineers
 
+This repository has one branch, `main`. There is no `develop`, and a ruleset blocks creating it.
+
 1. Run `make hooks` once to install the git hooks.
 2. Create a branch from `main`: `feat/*` for new features, `fix/*` for bug fixes.
 3. Make your changes.
