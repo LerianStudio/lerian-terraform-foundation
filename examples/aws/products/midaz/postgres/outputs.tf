@@ -138,9 +138,6 @@ output "subnet_group_name" {
 # onboarding and transaction deployment — the ledger container is unified and
 # carries both sets of variables, pointed at the same instance.
 #
-# The same shape is produced by pkg/infra/chartmap.go for shared mode. The two must
-# agree: TestMidazShapeIsTheSameInBothModes fails when they drift.
-#
 # Values are strings because they end up in a ConfigMap, which has no other type.
 #
 # NOT emitted here, on purpose:

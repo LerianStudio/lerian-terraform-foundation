@@ -143,9 +143,6 @@ output "admin_username" {
 # — the CRM deployment has no RabbitMQ variables, which is why there is no "crm"
 # entry rather than an empty one.
 #
-# The same shape is produced by pkg/infra/chartmap.go for shared mode. The two must
-# agree: TestMidazShapeIsTheSameInBothModes fails when they drift.
-#
 # THE TWO PORT VARIABLES ARE NAMED BACKWARDS IN THE CHART. This is not a typo
 # below — it is the chart's own convention, and the ledger init container reads
 # them that way:

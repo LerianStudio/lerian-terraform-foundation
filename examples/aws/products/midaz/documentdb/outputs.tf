@@ -150,9 +150,6 @@ output "tls_enabled" {
 # transaction deployment — the ledger container is unified and carries both sets of
 # variables, pointed at the same cluster.
 #
-# The same shape is produced by pkg/infra/chartmap.go for shared mode. The two must
-# agree: TestMidazShapeIsTheSameInBothModes fails when they drift.
-#
 # MONGO_ONBOARDING_URI / MONGO_TRANSACTION_URI are NOT connection strings. The
 # chart uses them for the SCHEME alone and the application assembles the URI from
 # the HOST/PORT/USER/NAME variables around it. "mongodb" is the only correct

@@ -9,16 +9,12 @@ Cluster-level roots that belong to no product.
 
 ## Why a pseudo-product under `products/`
 
-`lerian-infra` discovers roots by walking `products/*/*` and nothing else, and its
-`infra-base` stage is hardcoded to exactly `vpc` and `eks`
-(`pkg/infra/discover.go:36-78`, `:128-153`). A root at `infra-base/dns` would be
-invisible to the CLI: no ordering, no account guard, no derived state key — applied
-by hand or not at all. Living here buys all three, at the cost of a name that reads
+These roots are applied like a product stack, after `infra-base/eks` (step 5), so they
+sit under `products/` and take the state key
+`aws/products/lerian-platform/<root>/terraform.tfstate`. The cost is a name that reads
 like a product and is not one.
 
-Both roots run in the products stage, which is after `infra-base/eks`. Neither is
-depended on by any product root, so their position in the alphabetical product order
-does not matter.
+No product root depends on either, so apply them in any order among the product stacks.
 
 ## `dns` has the only manual step on the estate
 

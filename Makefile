@@ -2,12 +2,10 @@
 
 init: deps
 	@echo "Initializing git hooks..."
-	@rm -rf .git/hooks
-	@mkdir -p .git/hooks
-	@cp scripts/pre-commit.sh .git/hooks/pre-commit
-	@cp scripts/commit-msg.sh .git/hooks/commit-msg
-	@chmod +x .git/hooks/pre-commit
-	@chmod +x .git/hooks/commit-msg
+	@hooks=$$(git rev-parse --git-path hooks) && mkdir -p "$$hooks" \
+		&& cp scripts/pre-commit.sh "$$hooks/pre-commit" \
+		&& cp scripts/commit-msg.sh "$$hooks/commit-msg" \
+		&& chmod +x "$$hooks/pre-commit" "$$hooks/commit-msg"
 	@echo "Git hooks initialized!"
 
 deps:

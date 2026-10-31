@@ -7,7 +7,7 @@
 # ACM validation, which cannot succeed until somebody creates an NS record in the
 # PARENT account. Read main.tf before running it, and expect a two-pass apply:
 #
-#   1. lerian-infra ... --target lerian-platform/dns   -> stalls on validation
+#   1. apply lerian-platform/dns                       -> stalls on validation
 #   2. read `terraform output name_servers`, create the NS record in the parent
 #   3. re-run                                          -> validation completes
 #
@@ -16,16 +16,15 @@
 # Copy to prd.tfvars before use.
 ################################################################################
 
-region      = "sa-east-1"
+region      = "us-east-1"
 product     = "lerian-platform"
 environment = "prd"
 
 ################################################################################
 # The names
 #
-# BOTH PLACEHOLDERS BREAK THE PLAN UNTIL FILLED IN — lerian-infra aborts on any
-# "<...>" token outside a comment, which is the repository's convention for a value
-# that must not be guessed.
+# BOTH PLACEHOLDERS BREAK THE PLAN UNTIL FILLED IN: the zone_name and
+# parent_zone_name validations reject them.
 #
 # zone_name differs per ACCOUNT: each account holds its own delegated subdomain of
 # one parent, which is what keeps the accounts independent at the DNS layer.

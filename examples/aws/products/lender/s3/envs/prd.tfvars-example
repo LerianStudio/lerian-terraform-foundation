@@ -13,7 +13,7 @@
 # Copy to prd.tfvars before use.
 ################################################################################
 
-region      = "sa-east-1"
+region      = "us-east-1"
 product     = "lender"
 environment = "prd"
 

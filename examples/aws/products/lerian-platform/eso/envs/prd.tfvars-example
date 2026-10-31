@@ -11,7 +11,7 @@
 # Copy to prd.tfvars before use.
 ################################################################################
 
-region      = "sa-east-1"
+region      = "us-east-1"
 product     = "lerian-platform"
 environment = "prd"
 
@@ -108,9 +108,9 @@ allow_list_secrets = true
 #
 #   terraform -chdir=examples/aws/products/shared-resources/msk output -raw scram_kms_key_arn
 #
-# The placeholder below is intentional and BREAKS THE PLAN: lerian-infra aborts on
-# any "<...>" token outside a comment. Replace it, or delete the entry entirely if
-# MSK has not been applied yet and the Kafka projection can wait.
+# The placeholder below is intentional: the plan accepts it and the apply fails on it.
+# Replace it, or delete the entry entirely if MSK has not been applied yet and the
+# Kafka projection can wait.
 #
 # THIS IS NOT THE FIRST THING TO SUSPECT ON A SecretSyncedError. A path missing from
 # secret_path_prefixes produces the identical symptom and is far more common. Check
