@@ -34,7 +34,7 @@
 # Copy to prd.tfvars before use.
 ################################################################################
 
-region      = "sa-east-1"
+region      = "us-east-1"
 product     = "tenant-manager"
 environment = "prd"
 

@@ -11,7 +11,7 @@
 # Copy to prd.tfvars before use.
 ################################################################################
 
-region      = "sa-east-1"
+region      = "us-east-1"
 product     = "lerian-platform"
 environment = "prd"
 
@@ -108,7 +108,7 @@ allow_list_secrets = true
 #
 #   terraform -chdir=examples/aws/products/shared-resources/msk output -raw scram_kms_key_arn
 #
-# The placeholder below is intentional and BREAKS THE PLAN: lerian-infra aborts on
+# The placeholder below is intentional and BREAKS THE PLAN: the apply tooling aborts on
 # any "<...>" token outside a comment. Replace it, or delete the entry entirely if
 # MSK has not been applied yet and the Kafka projection can wait.
 #

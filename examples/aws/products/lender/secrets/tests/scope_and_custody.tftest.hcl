@@ -16,7 +16,7 @@
 ################################################################################
 
 provider "aws" {
-  region                      = "sa-east-1"
+  region                      = "us-east-1"
   access_key                  = "test"
   secret_key                  = "test"
   skip_credentials_validation = true
@@ -32,9 +32,9 @@ override_data {
 }
 
 variables {
-  region            = "sa-east-1"
+  region            = "us-east-1"
   environment       = "prd"
-  oidc_provider_arn = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.sa-east-1.amazonaws.com/id/0123456789ABCDEF0123456789ABCDEF"
+  oidc_provider_arn = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/0123456789ABCDEF0123456789ABCDEF"
 }
 
 run "lender_paths_only_and_never_custody" {
@@ -50,7 +50,7 @@ run "lender_paths_only_and_never_custody" {
     condition = alltrue([
       for target in ["midaz", "consignado-gateway", "matcher"] : anytrue([
         for pattern in output.secret_arn_patterns :
-        can(regex("^${replace(pattern, "*", ".*")}$", "arn:aws:secretsmanager:sa-east-1:123456789012:secret:tenants/production/org-1/lender/m2m/${target}/credentials-AbCdEf"))
+        can(regex("^${replace(pattern, "*", ".*")}$", "arn:aws:secretsmanager:us-east-1:123456789012:secret:tenants/production/org-1/lender/m2m/${target}/credentials-AbCdEf"))
       ])
     ])
     error_message = "A lender M2M credential under tenants/production/{tenant}/lender/m2m/{target}/credentials is not covered by the allow. The lender refuses to boot when the Midaz relay's credential is unreadable."
@@ -68,7 +68,7 @@ run "lender_paths_only_and_never_custody" {
         "tenants/staging/org-1/lender/m2m/midaz/credentials-AbCdEf",
         ] : [
         for pattern in output.secret_arn_patterns :
-        !can(regex("^${replace(pattern, "*", ".*")}$", "arn:aws:secretsmanager:sa-east-1:123456789012:secret:${secret}"))
+        !can(regex("^${replace(pattern, "*", ".*")}$", "arn:aws:secretsmanager:us-east-1:123456789012:secret:${secret}"))
       ]
     ]))
     error_message = "The allow reaches a secret that is not the lender's: a Dataprev custody credential, another service's M2M credential or installation secret, or another environment."
@@ -84,8 +84,8 @@ run "lender_paths_only_and_never_custody" {
       for statement in jsondecode(module.secrets.policy_json).Statement :
       jsonencode([statement.Effect, statement.Action, statement.Resource])
       ]) == toset([
-      jsonencode(["Allow", "secretsmanager:GetSecretValue", "arn:aws:secretsmanager:sa-east-1:123456789012:secret:tenants/production/*/lender/m2m/*"]),
-      jsonencode(["Deny", "secretsmanager:*", "arn:aws:secretsmanager:sa-east-1:123456789012:secret:tenants/*/*/*/external/*"]),
+      jsonencode(["Allow", "secretsmanager:GetSecretValue", "arn:aws:secretsmanager:us-east-1:123456789012:secret:tenants/production/*/lender/m2m/*"]),
+      jsonencode(["Deny", "secretsmanager:*", "arn:aws:secretsmanager:us-east-1:123456789012:secret:tenants/*/*/*/external/*"]),
     ]) && length(jsondecode(module.secrets.policy_json).Statement) == 2
     error_message = "The attached policy is not exactly an Allow of secretsmanager:GetSecretValue on tenants/production/*/lender/m2m/* plus a Deny of secretsmanager:* on tenants/*/*/*/external/*. Only br-consignado-gw may read a Dataprev custody credential, and the lender needs nothing beyond reading its own M2M credentials."
   }
