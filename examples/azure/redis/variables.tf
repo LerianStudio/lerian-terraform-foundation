@@ -10,8 +10,9 @@ variable "resource_group_name" {
 }
 
 variable "subscription_id" {
-  description = "Subscription ID"
+  description = "Subscription ID. When null, the provider uses the ARM_SUBSCRIPTION_ID environment variable."
   type        = string
+  default     = null
 }
 
 variable "redis_name" {
@@ -78,8 +79,8 @@ variable "shard_count" {
   type        = number
   default     = 2
   validation {
-    condition     = var.shard_count >= 1
-    error_message = "shard_count must be at least 1."
+    condition     = var.shard_count >= 0
+    error_message = "shard_count must be zero or more."
   }
 }
 

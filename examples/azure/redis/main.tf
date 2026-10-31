@@ -19,7 +19,7 @@ resource "azurerm_redis_cache" "example" {
 
   lifecycle {
     precondition {
-      condition     = var.sku == "Premium" || var.shard_count == 1
+      condition     = var.sku == "Premium" || var.shard_count <= 1
       error_message = "Sharding (shard_count > 1) is only allowed for Premium SKU."
     }
   }

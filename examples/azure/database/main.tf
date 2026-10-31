@@ -78,11 +78,13 @@ resource "azurerm_postgresql_flexible_server" "primary" {
 
   # Primary availability zone and HA configuration
   zone = var.primary_zone
-  high_availability {
-    # When true, set to ZoneRedundant; otherwise Disabled
-    mode = var.zone_redundant_enabled ? "ZoneRedundant" : "SameZone"
-    # Only meaningful when mode is ZoneRedundant; null when Disabled
-    standby_availability_zone = var.zone_redundant_enabled ? var.standby_zone : null
+  # Zone-redundant HA only when zone_redundant_enabled; no standby otherwise.
+  dynamic "high_availability" {
+    for_each = var.zone_redundant_enabled ? [1] : []
+    content {
+      mode                      = "ZoneRedundant"
+      standby_availability_zone = var.standby_zone
+    }
   }
 
   sku_name   = var.pgsql_sku
