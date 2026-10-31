@@ -9,6 +9,12 @@ variable "resource_group_name" {
   type        = string
 }
 
+variable "subscription_id" {
+  description = "Subscription ID. When null, the provider uses the ARM_SUBSCRIPTION_ID environment variable."
+  type        = string
+  default     = null
+}
+
 variable "redis_name" {
   description = "Name of the Redis Cache instance"
   type        = string
@@ -73,8 +79,8 @@ variable "shard_count" {
   type        = number
   default     = 2
   validation {
-    condition     = !(var.sku != "Premium" && var.shard_count > 1)
-    error_message = "Sharding (shard_count > 1) is only allowed for Premium SKU."
+    condition     = var.shard_count >= 0
+    error_message = "shard_count must be zero or more."
   }
 }
 

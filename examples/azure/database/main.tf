@@ -76,12 +76,32 @@ resource "azurerm_postgresql_flexible_server" "primary" {
   administrator_password = azurerm_key_vault_secret.postgres_admin_password.value
   version                = var.pgsql_version
 
+  # Primary availability zone and HA configuration
+  zone = var.primary_zone
+  # Zone-redundant HA only when zone_redundant_enabled; no standby otherwise.
+  dynamic "high_availability" {
+    for_each = var.zone_redundant_enabled ? [1] : []
+    content {
+      mode                      = "ZoneRedundant"
+      standby_availability_zone = var.standby_zone
+    }
+  }
+
   sku_name   = var.pgsql_sku
   storage_mb = var.pgsql_storage_mb
 
   delegated_subnet_id           = data.azurerm_subnet.subnet_db_1.id
   private_dns_zone_id           = azurerm_private_dns_zone.postgres.id
   public_network_access_enabled = false
+
+  lifecycle {
+    # A failover swaps the primary zone and the standby zone, so Terraform ignores
+    # those two fields. HA on or off still applies.
+    ignore_changes = [
+      zone,
+      high_availability[0].standby_availability_zone,
+    ]
+  }
 
   tags = var.tags
 
@@ -103,11 +123,14 @@ resource "azurerm_postgresql_flexible_server" "replica" {
   private_dns_zone_id           = azurerm_private_dns_zone.postgres.id
   public_network_access_enabled = false
 
-  dynamic "high_availability" {
-    for_each = var.zone_redundant_enabled ? [1] : []
-    content {
-      mode = "ZoneRedundant"
-    }
+  # Prevent Terraform from attempting in-place zone/HA changes on existing replicas
+  # which Azure rejects. If HA/zone must change, recreate the replica explicitly.
+  lifecycle {
+    ignore_changes = [
+      zone,
+      high_availability,
+    ]
   }
+
   tags = var.tags
 }
