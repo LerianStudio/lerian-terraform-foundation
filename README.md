@@ -17,7 +17,7 @@ information](#important-information) before deploying anything to production.
 | `bootstrap` | true | false | partial | Versioned state bucket, lock table, generated backend config |
 | `infra-base` | true | true | true | Network with public/private subnets, Kubernetes cluster, DNS zone |
 | `shared-resources` | true | false | false | PostgreSQL, DocumentDB, Valkey, RabbitMQ, Kafka: one instance each, shared by every product in the environment |
-| `br-consignado-gw` | true | false | false | PostgreSQL, Valkey |
+| `br-consignado-gw` | true | false | false | PostgreSQL, Valkey, Kafka, S3, Secrets Manager |
 | `br-sfn` | true | false | false | PostgreSQL, Valkey, RabbitMQ, Kafka, S3 |
 | `br-sisbajud` | true | false | false | PostgreSQL, Valkey, Kafka |
 | `fetcher` | true | false | false | DocumentDB, Valkey, RabbitMQ, S3 |
@@ -37,7 +37,10 @@ information](#important-information) before deploying anything to production.
 | `product-console` | true | false | false | DocumentDB |
 | `reporter` | true | false | false | DocumentDB, Valkey, RabbitMQ, S3 |
 | `tracer` | true | false | false | PostgreSQL, Valkey |
-| `lender` | true | false | false | PostgreSQL, Valkey, S3 |
+| `lender` | true | false | false | PostgreSQL, Valkey, S3, Secrets Manager |
+| `lerian-platform` | true | false | false | Public hosted zone with wildcard ACM certificate, IAM role for External Secrets Operator |
+| `streaming-hub` | true | false | false | PostgreSQL, Valkey, Kafka, Secrets Manager |
+| `tenant-manager` | true | false | false | DocumentDB, Valkey, S3, Secrets Manager |
 
 On AWS: PostgreSQL is RDS, DocumentDB is Amazon DocumentDB, Valkey is ElastiCache,
 RabbitMQ is AmazonMQ, Kafka is MSK. Each product datastore can be **dedicated** or
@@ -141,8 +144,7 @@ The warning does not stop `init`.
 
 Each stack ships its variables as `envs/<env>.tfvars-example`. Copy the file to
 `envs/<env>.tfvars` and edit it before you plan. `*.tfvars` is gitignored. Use one region
-for the whole environment: a product stack must run in the region of the VPC, and the
-examples do not all use the same region.
+for the whole environment: a product stack must run in the region of the VPC.
 
 ## 4. Deploy the network
 
