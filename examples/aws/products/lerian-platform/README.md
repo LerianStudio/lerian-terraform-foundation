@@ -14,9 +14,7 @@ sit under `products/` and take the state key
 `aws/products/lerian-platform/<root>/terraform.tfstate`. The cost is a name that reads
 like a product and is not one.
 
-Both roots run in the products stage, which is after `infra-base/eks`. Neither is
-depended on by any product root, so their position in the alphabetical product order
-does not matter.
+No product root depends on either, so apply them in any order among the product stacks.
 
 ## `dns` has the only manual step on the estate
 

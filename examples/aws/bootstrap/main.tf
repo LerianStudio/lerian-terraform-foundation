@@ -144,7 +144,7 @@ locals {
 # protected, lifecycled and destroyed alongside the state it describes, and would
 # raise the same finding about itself. What it would buy is a delayed, best-effort
 # copy of a record CloudTrail already keeps: every call against this bucket is made
-# with named credentials the account guard verified, and management events are
+# with the named credentials, and management events are
 # recorded account-wide with no bucket here.
 #
 # Enable S3 data events on this bucket in CloudTrail if you need object-level reads

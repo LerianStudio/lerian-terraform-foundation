@@ -11,7 +11,7 @@
 # Each of those directories is a flat Terraform root with a committed backend.tf
 # holding <PLACEHOLDER> values, a single midaz.tfvars, and no notion of an
 # environment. Nothing here is environment-scoped and nothing here talks to
-# examples/aws/backend/ or examples/aws/environments.conf.
+# examples/aws/backend/
 #
 # ---------------------------------------------------------------------------
 # Why AWS is not in this file
@@ -21,12 +21,8 @@
 # documentdb-plugin-crm and eks — were removed in v2. Every AWS path here was
 # dead: it resolved to a directory that no longer exists.
 #
-# AWS moved to an environment-scoped, hierarchical layout with partial backend
-# configuration, per-environment state buckets and an account guard. That shares
-# no mechanism with the flow below, so it lives in its own script:
-#
-#   ./deploy.sh --env dev --target infra-base --action plan
-#   ./deploy.sh --help
+# AWS moved to an environment-scoped, hierarchical layout under examples/aws.
+# It shares no mechanism with the flow below; see the README for how to use it.
 #
 ################################################################################
 

@@ -138,9 +138,6 @@ output "subnet_group_name" {
 # onboarding and transaction deployment — the ledger container is unified and
 # carries both sets of variables, pointed at the same instance.
 #
-# Shared mode produces the same shape. The two must
-# agree.
-#
 # Values are strings because they end up in a ConfigMap, which has no other type.
 #
 # NOT emitted here, on purpose:
