@@ -1,5 +1,35 @@
 # Lerian-terraform-foundation Changelog
 
+## [1.15.1](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.15.1)
+
+Features:
+- Migrate shared workflows to `shared-workflows-public`. (@bedatty)
+
+Fixes:
+- Install only this repository's Git hooks during `make init`. (@fredcamaral)
+
+Improvements:
+- Clean the public repository of internal names, mixed regions, and hook deletion. (@fredcamaral)
+- Keep a local `environments.conf` file out of the repository. (@fredcamaral)
+- Remove internal tool names from comments and documentation. (@fredcamaral)
+- Use a consistent example region, `us-east-1`, in every `tfvars` example. (@fredcamaral)
+- Move the license from Apache `2.0` to Elastic License `2.0`. (@fredcamaral)
+- Retire the `lerian.dev` estate roots. (@fredcamaral)
+- Drop references to tooling not shipped with this tree. (@fredcamaral)
+- Complete the support matrix and remove the region caveat. (@fredcamaral)
+- Improve the accuracy of wording related to the environments file and secrets role. (@fredcamaral)
+- State where AWS passwords are stored and who may assume the roles. (@fredcamaral)
+- Scope AWS ESO prefixes and stack repeats per environment. (@fredcamaral)
+- Edit `tfvars` before planning in the AWS README. (@fredcamaral)
+- Close gaps in the AWS walkthrough for paste, PRD, and teardown. (@fredcamaral)
+- Take issues from anyone and pull requests only from Lerian. (@fredcamaral)
+- Clarify what the installed Git hooks check. (@fredcamaral)
+- Show the AWS path as plain Terraform. (@fredcamaral)
+
+[Compare changes](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.15.0...v1.15.1)
+
+---
+
 ## [1.15.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.15.0)
 
 Features:
