@@ -453,8 +453,9 @@ to report a bug or ask for a change. Lerian Studio does not accept pull requests
 outside contributors; Lerian engineers make every change. See
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Lerian engineers install the git hooks before the first commit. They enforce the commit
-conventions this repository releases from:
+Lerian engineers install the git hooks before the first commit. The commit-msg hook
+checks the Conventional Commits format, and the pre-commit hook runs `terraform fmt`,
+`terraform validate` and `tfsec`:
 
 ```bash
 make hooks
