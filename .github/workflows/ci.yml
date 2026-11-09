@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   validate:
-    runs-on: ${{ vars.GENERAL_RUNNERS || vars.FALLBACK_RUNNERS }}
+    runs-on: ${{ (github.event.repository.visibility == 'public' && vars.PUBLIC_RUNNERS) || vars.GENERAL_RUNNERS || vars.FALLBACK_RUNNERS }}
     steps:
     # Checkout repository code in PR
     - name: Checkout in PR
@@ -128,7 +128,7 @@ jobs:
 
   release:
     needs: [validate]  # Only run after validation succeeds
-    runs-on: ${{ vars.GENERAL_RUNNERS || vars.FALLBACK_RUNNERS }}
+    runs-on: ${{ (github.event.repository.visibility == 'public' && vars.PUBLIC_RUNNERS) || vars.GENERAL_RUNNERS || vars.FALLBACK_RUNNERS }}
     if: github.event_name != 'pull_request'
     steps:
     # Create GitHub App token for better rate limits
