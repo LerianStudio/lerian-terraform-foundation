@@ -69,3 +69,22 @@ variable "write_backend_config" {
   type        = bool
   default     = true
 }
+
+variable "state_lock" {
+  description = <<-EOT
+    How the generated backend file locks state. "dynamodb" (default) keeps the
+    DynamoDB lock table, which Terraform deprecates and warns about on every init.
+    "both" sets dynamodb_table and use_lockfile, so a lock needs the table item and
+    the S3 .tflock object: the step that lets checkouts and pipelines move one by
+    one without two writers holding separate locks. "lockfile" uses only the S3
+    .tflock object (Terraform 1.11 or later), and is only safe once every writer of
+    this environment's state has re-initialised on "both".
+  EOT
+  type        = string
+  default     = "dynamodb"
+
+  validation {
+    condition     = contains(["dynamodb", "both", "lockfile"], var.state_lock)
+    error_message = "state_lock must be one of: dynamodb, both, lockfile."
+  }
+}

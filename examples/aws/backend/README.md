@@ -13,10 +13,10 @@ tracked files in the directory.
 Each file is a partial backend configuration:
 
 ```hcl
-bucket       = "lerian-tfstate-dev-123456789012"
-region       = "us-east-1"
-use_lockfile = true
-encrypt      = true
+bucket         = "lerian-tfstate-dev-123456789012"
+region         = "us-east-1"
+dynamodb_table = "lerian-tfstate-lock-dev"
+encrypt        = true
 ```
 
 Note what is **absent**: `key`. The bucket is already per-environment, so the
