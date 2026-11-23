@@ -74,4 +74,7 @@ terraform apply -var-file=envs/dev.tfvars
 
 If the bucket already exists but the file does not (fresh clone, another
 operator ran the bootstrap), write the file by hand from the four values above —
-the bucket name is `lerian-tfstate-<env>-<account_id>`.
+the bucket name is `lerian-tfstate-<env>-<account_id>`. Use the lock arguments of the
+environment's current `state_lock` (bootstrap `envs/<env>.tfvars`): `dynamodb_table`
+for `dynamodb`, `use_lockfile = true` instead for `lockfile`, both for `both`. A file
+with the wrong lock arguments takes a lock the other writers do not.

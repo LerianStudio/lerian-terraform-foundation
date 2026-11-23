@@ -145,14 +145,21 @@ favour of `use_lockfile`. The warning does not stop `init`.
 The bootstrap's `state_lock` variable moves an environment to the S3 lockfile without a
 window where two writers hold different locks:
 
-1. Set `state_lock = "both"` and run the bootstrap apply. The backend file now carries
-   `dynamodb_table` and `use_lockfile`, and a lock needs both.
-2. Run `terraform init -reconfigure -backend-config=... -backend-config="key=..."` in
-   every stack, in every checkout and pipeline that writes this environment's state.
-   Until a writer re-initialises it still takes the DynamoDB lock, which the migrated
-   writers also take, so the two never run at once.
-3. Once every writer runs on `both`, set `state_lock = "lockfile"` (Terraform 1.11 or
-   later), apply the bootstrap and re-initialise again. The warning is gone. The lock
+1. Set `state_lock = "both"` in the bootstrap's `envs/<env>.tfvars` (keep it there: a
+   later bootstrap apply without it falls back to `dynamodb`) and apply the bootstrap.
+   The backend file now carries `dynamodb_table` and `use_lockfile`, and a lock needs
+   both.
+2. In every checkout and pipeline that writes this environment's state, replace its own
+   `examples/aws/backend/<env>.hcl` with the generated one (a hand-written or
+   pipeline-written file must gain `use_lockfile = true` too), then run
+   `terraform init -reconfigure -backend-config=... -backend-config="key=..."` in every
+   stack. Until a writer re-initialises it still takes the DynamoDB lock, which the
+   migrated writers also take, so the two never run at once.
+3. Pause every plan and apply against the environment, set `state_lock = "lockfile"`
+   (Terraform 1.11 or later), apply the bootstrap, and update and re-initialise every
+   writer again before writes resume. A writer left on `dynamodb_table` alone would hold
+   a lock the others no longer take, and fails with "state data in S3 does not have the
+   expected content" once a lockfile writer has written. The warning is gone. The lock
    table is no longer read and stays until it is removed on purpose.
 
 Each stack ships its variables as `envs/<env>.tfvars-example`. Copy the file to
@@ -440,7 +447,8 @@ Read this before a production deployment.
   runs the same from CI. `examples/aws/backend/<env>.hcl` and `envs/*.tfvars` are
   gitignored, so the pipeline must supply them. When the runner cannot write to its
   checkout, set `write_backend_config = false` on `bootstrap` and write the backend file
-  yourself, in the shape shown in step 2.
+  yourself, in the shape shown in step 2 plus the lock arguments of the environment's
+  current `state_lock` (`dynamodb_table`, `use_lockfile = true`, or both).
 
 # Reference
 
