@@ -287,6 +287,11 @@ resource "aws_s3_bucket_policy" "tfstate" {
 
 ################################################################################
 # State lock table
+#
+# No longer read: the generated backend config locks with use_lockfile (S3).
+# The table stays so environments bootstrapped before that change keep a working
+# lock until they re-run this apply and `terraform init -reconfigure` each stack.
+# It goes in a later release, through the header section 3 procedure.
 ################################################################################
 
 resource "aws_dynamodb_table" "tfstate_lock" {
@@ -328,10 +333,13 @@ resource "local_file" "backend_config" {
   filename        = local.backend_config_write_path
   file_permission = "0640"
 
+  # use_lockfile takes the state lock with a conditional write of a .tflock object
+  # next to the state in the bucket (Terraform >= 1.10). dynamodb_table is
+  # deprecated and warns on every init and apply.
   content = <<-EOT
-    bucket         = "${aws_s3_bucket.tfstate.id}"
-    region         = "${var.region}"
-    dynamodb_table = "${aws_dynamodb_table.tfstate_lock.name}"
-    encrypt        = true
+    bucket       = "${aws_s3_bucket.tfstate.id}"
+    region       = "${var.region}"
+    use_lockfile = true
+    encrypt      = true
   EOT
 }
