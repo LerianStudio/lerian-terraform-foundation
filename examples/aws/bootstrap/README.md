@@ -1,8 +1,11 @@
 # bootstrap — Terraform state backend, per environment
 
-Creates the S3 bucket and DynamoDB lock table that every other stack in
-`examples/aws/` uses as its remote backend, and writes the generated
-`examples/aws/backend/<env>.hcl` those stacks consume.
+Creates the S3 bucket that every other stack in `examples/aws/` uses as its
+remote backend, and writes the generated `examples/aws/backend/<env>.hcl` those
+stacks consume. The generated file locks state with an S3 lockfile
+(`use_lockfile = true`, Terraform 1.10 or later). The DynamoDB lock table it also
+creates is no longer read; it stays for environments bootstrapped before that
+change and goes in a later release.
 
 Run this **first**, **once per environment**. It replaces the manual
 `aws s3api create-bucket` / `aws dynamodb create-table` steps.

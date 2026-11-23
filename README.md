@@ -114,10 +114,10 @@ terraform apply -var-file=envs/dev.tfvars
 The apply writes `examples/aws/backend/dev.hcl`, which every other stack reads:
 
 ```hcl
-bucket         = "lerian-tfstate-dev-123456789012"
-region         = "us-east-1"
-dynamodb_table = "lerian-tfstate-lock-dev"
-encrypt        = true
+bucket       = "lerian-tfstate-dev-123456789012"
+region       = "us-east-1"
+use_lockfile = true
+encrypt      = true
 ```
 
 The file is gitignored because it carries your account id. Keep the local state of the
@@ -138,9 +138,16 @@ bucket already does.
 | `examples/aws/products/<product>/<service>` | `../../../backend/<env>.hcl` | `aws/products/<product>/<service>/terraform.tfstate` |
 
 Use one checkout per environment. A directory remembers its backend in `.terraform/`, and
-`plan`, `apply` and `destroy` act on that environment whatever `-var-file` names. Recent
-Terraform versions warn that `dynamodb_table` is deprecated in favour of `use_lockfile`.
-The warning does not stop `init`.
+`plan`, `apply` and `destroy` act on that environment whatever `-var-file` names. The state
+lock is a `.tflock` object next to the state in the bucket (`use_lockfile`), which needs
+Terraform 1.10 or later.
+
+An environment bootstrapped before this release has `dynamodb_table` in its backend
+file, and every `init` and `apply` warns that it is deprecated. To move it to the S3
+lockfile, when nobody is running a plan or apply against it: run the bootstrap apply
+again, which rewrites `examples/aws/backend/<env>.hcl`, then run
+`terraform init -reconfigure -backend-config=... -backend-config="key=..."` in each
+stack. The DynamoDB lock table is no longer read and stays until a later release.
 
 Each stack ships its variables as `envs/<env>.tfvars-example`. Copy the file to
 `envs/<env>.tfvars` and edit it before you plan. `*.tfvars` is gitignored. Use one region
