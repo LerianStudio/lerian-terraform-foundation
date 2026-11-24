@@ -1,5 +1,22 @@
 # Lerian-terraform-foundation Changelog
 
+## [1.16.1](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.16.1)
+
+Fixes:
+- Made the S3 lockfile an opt-in, staged migration to improve flexibility in AWS environments. (@bedatty)
+- Locked Terraform state with an S3 lockfile instead of DynamoDB for better state management. (@bedatty)
+
+Improvements:
+- Routed the public repository's CI jobs to `PUBLIC_RUNNERS` for optimized job execution. (@bedatty)
+- Resolved runners through organization variables only, streamlining the CI configuration. (@bedatty)
+
+Documentation:
+- Updated documentation to ensure every writer is aware of the environment's lock mode during the lockfile move. (@bedatty)
+
+[Compare changes](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.16.0...v1.16.1)
+
+---
+
 ## [1.16.0](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.16.0)
 
 Features:
