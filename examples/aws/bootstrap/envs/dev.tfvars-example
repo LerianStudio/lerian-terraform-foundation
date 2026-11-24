@@ -18,3 +18,8 @@ noncurrent_version_expiration_days     = 30
 abort_incomplete_multipart_upload_days = 7
 
 write_backend_config = true
+
+# How the generated backend file locks state: "dynamodb" (default), "both" while every
+# writer moves over, then "lockfile" (Terraform 1.11+). Keep the value here once
+# changed: an apply without it goes back to "dynamodb". See the root README.
+state_lock = "dynamodb"

@@ -2,7 +2,9 @@
 
 Creates the S3 bucket and DynamoDB lock table that every other stack in
 `examples/aws/` uses as its remote backend, and writes the generated
-`examples/aws/backend/<env>.hcl` those stacks consume.
+`examples/aws/backend/<env>.hcl` those stacks consume. `state_lock` chooses how that
+file locks state: `dynamodb` (default), `both` while moving over, or `lockfile` (S3
+`.tflock`, Terraform 1.11 or later). The root README has the migration order.
 
 Run this **first**, **once per environment**. It replaces the manual
 `aws s3api create-bucket` / `aws dynamodb create-table` steps.
@@ -163,6 +165,7 @@ aws dynamodb describe-table --table-name lerian-tfstate-lock-dev \
 | `noncurrent_version_expiration_days`     | `90`          | Minimum 7 — this is the state recovery window                |
 | `abort_incomplete_multipart_upload_days` | `7`           | Cleans orphaned multipart parts                              |
 | `write_backend_config`                   | `true`        | `false` to skip writing `../backend/{env}.hcl`               |
+| `state_lock`                             | `"dynamodb"`  | `dynamodb`, `both` or `lockfile`: the lock arguments in the backend file |
 
 ### Naming exception
 
