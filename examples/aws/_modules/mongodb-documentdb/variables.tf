@@ -113,15 +113,20 @@ variable "instances_count" {
 }
 
 variable "engine_version" {
-  description = "DocumentDB engine version. Leave null to take the AWS default for the parameter group family."
+  description = "DocumentDB engine version (x.y.z). Leave null to derive it from parameter_group_family (docdb5.0 -> 5.0.0). When set, its major.minor must match the family, or the plan fails."
   type        = string
   default     = null
 }
 
 variable "parameter_group_family" {
-  description = "DocumentDB cluster parameter group family. Must match engine_version."
+  description = "DocumentDB cluster parameter group family (docdbX.Y). Also sets the engine version when engine_version is null: docdb5.0 -> 5.0.0."
   type        = string
   default     = "docdb5.0"
+
+  validation {
+    condition     = can(regex("^docdb[0-9]+\\.[0-9]+$", var.parameter_group_family))
+    error_message = "parameter_group_family must look like docdbX.Y (e.g. docdb5.0)."
+  }
 }
 
 variable "documentdb_tls" {

@@ -145,13 +145,13 @@ variable "instances_count" {
 }
 
 variable "engine_version" {
-  description = "DocumentDB engine version. Null takes the AWS default for parameter_group_family."
+  description = "DocumentDB engine version (x.y.z). Null derives it from parameter_group_family (docdb5.0 -> 5.0.0); when set, its major.minor must match the family."
   type        = string
   default     = null
 }
 
 variable "parameter_group_family" {
-  description = "DocumentDB cluster parameter group family. Must match engine_version."
+  description = "DocumentDB cluster parameter group family (docdbX.Y). Also sets the engine version when engine_version is null (docdb5.0 -> 5.0.0)."
   type        = string
   default     = "docdb5.0"
 }

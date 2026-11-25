@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check real Terraform resource plans with mocked providers; no AWS calls.
 
-Requires Terraform >= 1.7 and init -backend=false in both tested roots.
+Requires Terraform >= 1.7 and init -backend=false in every tested root.
 Nested module resources are not visible to root tftest assertions, so inspect
 Terraform's verbose JSON plan instead of duplicating the upstream HCL.
 """
@@ -88,9 +88,31 @@ def check_midaz_valkey(plan):
     print("midaz valkey: parameter group renders maxmemory-policy = noeviction")
 
 
+def check_product_console_documentdb(plans):
+    # A null engine_version must be derived from parameter_group_family
+    # (docdb5.0 -> 5.0.0). Sending null lets AWS pick its own default engine,
+    # which no longer matches the docdb5.0 parameter group. The expect_failures
+    # runs plan no cluster, so only the successful plans carry one.
+    clusters = [
+        r for plan in plans for r in plan["resource_changes"]
+        if r["type"] == "aws_docdb_cluster"
+    ]
+    assert clusters, "no aws_docdb_cluster planned in any run"
+    for cluster in clusters:
+        version = cluster["change"]["after"].get("engine_version")
+        assert version == "5.0.0", (cluster["address"], version)
+    print(
+        f"product-console documentdb: {len(clusters)} cluster plan(s) render "
+        "engine_version = 5.0.0 for docdb5.0"
+    )
+
+
 if __name__ == "__main__":
     test_plan("examples/aws/bootstrap")
     for plan in test_plan("examples/aws/infra-base/eks"):
         check_eks(plan)
     for plan in test_plan("examples/aws/products/midaz/valkey"):
         check_midaz_valkey(plan)
+    check_product_console_documentdb(
+        test_plan("examples/aws/products/product-console/documentdb")
+    )
