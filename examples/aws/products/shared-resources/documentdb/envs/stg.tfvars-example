@@ -46,7 +46,12 @@ port            = 27017
 instance_class         = "db.t3.medium"
 instances_count        = 2
 parameter_group_family = "docdb5.0"
-documentdb_tls         = "disabled"
+# engine_version must match the family's major.minor (any patch). Pin it for a
+# new cluster; null sends no version and AWS picks its own default, which may
+# not match the family. Leave it null only to keep an existing cluster's
+# AWS-chosen version.
+engine_version = "5.0.0"
+documentdb_tls = "disabled"
 
 backup_retention_period = 7
 skip_final_snapshot     = false

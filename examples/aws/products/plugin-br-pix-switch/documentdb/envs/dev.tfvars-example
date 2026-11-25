@@ -48,6 +48,11 @@ port            = 27017
 instance_class         = "db.t3.medium"
 instances_count        = 1
 parameter_group_family = "docdb5.0"
+# engine_version must match the family's major.minor (any patch). Pin it for a
+# new cluster; null sends no version and AWS picks its own default, which may
+# not match the family. Leave it null only to keep an existing cluster's
+# AWS-chosen version.
+engine_version = "5.0.0"
 
 # TLS off in dev, matching products/shared-resources/documentdb. See prd for why this is a
 # documented gap rather than an oversight.

@@ -39,6 +39,12 @@ locals {
 
   vpc_cidr = try(data.aws_vpc.selected[0].cidr_block, "")
 
+  # "docdb5.0" -> "5.0": the major.minor a pinned engine_version must carry.
+  # engine_version itself is NOT derived from it: null must keep sending no
+  # version, or existing clusters AWS created or upgraded to a later patch
+  # (5.0.1, 8.0.2) would plan a downgrade to x.y.0, which DocumentDB refuses.
+  family_version = trimprefix(var.parameter_group_family, "docdb")
+
   ################################################################################
   # Ingress — THE single rule, identical in all five datastore modules
   #
@@ -307,6 +313,16 @@ resource "aws_docdb_cluster" "main" {
   final_snapshot_identifier       = var.skip_final_snapshot ? null : "${module.naming.name}-final-snapshot"
 
   tags = merge(module.naming.tags, { Name = module.naming.name })
+
+  lifecycle {
+    # The cluster parameter group is created for parameter_group_family, and
+    # AWS rejects it on a cluster of another major.minor - minutes into the
+    # apply. Catch a pinned engine_version that disagrees with it at plan time.
+    precondition {
+      condition     = var.engine_version == null || can(regex("^${replace(local.family_version, ".", "\\.")}\\.[0-9]+$", var.engine_version))
+      error_message = "engine_version '${coalesce(var.engine_version, "null")}' does not match parameter_group_family '${var.parameter_group_family}': its major.minor must be ${local.family_version} (any patch, e.g. ${local.family_version}.0). Change both together."
+    }
+  }
 }
 
 resource "aws_docdb_cluster_instance" "main" {

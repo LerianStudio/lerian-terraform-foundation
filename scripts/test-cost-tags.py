@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check real Terraform resource plans with mocked providers; no AWS calls.
 
-Requires Terraform >= 1.7 and init -backend=false in both tested roots.
+Requires Terraform >= 1.7 and init -backend=false in every tested root.
 Nested module resources are not visible to root tftest assertions, so inspect
 Terraform's verbose JSON plan instead of duplicating the upstream HCL.
 """
@@ -14,7 +14,7 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_plan(relative):
+def test_plan(relative, by_run=False):
     result = subprocess.run(
         ["terraform", f"-chdir={ROOT / relative}", "test", "-json", "-verbose"],
         capture_output=True,
@@ -29,9 +29,11 @@ def test_plan(relative):
     )
     assert summary["failed"] == 0 and summary["passed"] > 0, summary
     print(f"{relative}: {summary['passed']} test runs passed")
-    plans = [event["test_plan"] for event in events if event["type"] == "test_plan"]
+    plans = [event for event in events if event["type"] == "test_plan"]
     assert plans, f"{relative}: no verbose plans returned"
-    return plans
+    if by_run:
+        return {event["@testrun"]: event["test_plan"] for event in plans}
+    return [event["test_plan"] for event in plans]
 
 
 def check_eks(plan):
@@ -139,9 +141,37 @@ def check_midaz_valkey(plan):
     print("midaz valkey: parameter group renders maxmemory-policy = noeviction")
 
 
+def check_product_console_documentdb(runs):
+    # engine_version must reach AWS exactly as the caller set it. A pin plans
+    # that pin, any patch of the family included. Null must stay unset, never
+    # derived from the family: a derived x.y.0 would plan a downgrade on every
+    # cluster AWS created or upgraded to a later patch, and DocumentDB refuses.
+    # The expect_failures runs plan no cluster and are not listed here.
+    expected = {
+        "pinned_like_tfvars_example": "5.0.0",
+        "later_patch": "5.0.2",
+        "null_sends_no_version": None,
+    }
+    for run, want in expected.items():
+        assert run in runs, f"run {run} returned no plan"
+        clusters = [
+            r for r in runs[run]["resource_changes"]
+            if r["type"] == "aws_docdb_cluster"
+        ]
+        assert len(clusters) == 1, (run, [r["address"] for r in clusters])
+        got = clusters[0]["change"]["after"].get("engine_version")
+        assert got == want, (run, clusters[0]["address"], got)
+    print(
+        "product-console documentdb: engine_version planned as pinned "
+        "(5.0.0, 5.0.2) and left unset when null"
+    )
+
 if __name__ == "__main__":
     test_plan("examples/aws/bootstrap")
     for plan in test_plan("examples/aws/infra-base/eks"):
         check_eks(plan)
     for plan in test_plan("examples/aws/products/midaz/valkey"):
         check_midaz_valkey(plan)
+    check_product_console_documentdb(
+        test_plan("examples/aws/products/product-console/documentdb", by_run=True)
+    )
