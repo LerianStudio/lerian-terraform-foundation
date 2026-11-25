@@ -302,8 +302,8 @@ else for IAM:
   # 1. Add the new policies and attachments; the old pairs stay attached.
   #    Terraform refuses a targeted plan that leaves out a pending move, and
   #    v6 moves two things: cert-manager's attachment (the moved block) and
-  #    each module's data.aws_partition.current, which loses its count. The
-  #    partition targets are read-only.
+  #    each module's data.aws_partition.current, which gains a count in v6
+  #    (current -> current[0]). The partition targets are read-only.
   terraform apply -var-file=envs/<env>.tfvars \
     -target='module.ebs_csi_irsa_role.aws_iam_role_policy_attachment.this[0]' \
     -target='module.ebs_csi_irsa_role.data.aws_partition.current' \
