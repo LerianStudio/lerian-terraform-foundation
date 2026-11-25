@@ -23,6 +23,6 @@ jobs:
   changelog:
     # Run if: manual trigger OR CI/CD workflow succeeded
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
-    uses: LerianStudio/shared-workflows-public/.github/workflows/gptchangelog.yml@tier-1
+    uses: LerianStudio/shared-workflows-public/.github/workflows/release-notes.yml@tier-1
     # No filter_paths = single app mode (non-monorepo)
     secrets: inherit
