@@ -292,9 +292,25 @@ else for IAM:
   Balancer Controller, ExternalDNS). v6 builds one policy per role under a new
   address, and it is now named `lerian-{env}-eks-{role}` instead of
   `AmazonEKS_*_Policy-<random>`. For each role the plan creates the new policy and
-  its attachment and destroys the old pair. All of it happens in one apply, but Terraform does not order the new attachment before the old one is
-  removed, so a controller can get `AccessDenied` for a few seconds. Apply outside a
-  deploy window.
+  its attachment and destroys the old pair. In a single apply Terraform destroys
+  the old pairs in parallel with creating the new ones, so a controller can lose
+  its grant mid-apply, and if a create fails (a name already taken, a transient
+  IAM error) nothing rolls back. Apply it in two steps instead, so the new grants
+  are attached while the old ones are still there:
+
+  ```bash
+  # 1. Add the new policies and attachments; the old pairs stay attached.
+  terraform apply \
+    -target='module.ebs_csi_irsa_role.aws_iam_role_policy_attachment.this[0]' \
+    -target='module.cluster_autoscaler_irsa_role[0].aws_iam_role_policy_attachment.this[0]' \
+    -target='module.aws_load_balancer_controller_irsa_role[0].aws_iam_role_policy_attachment.this[0]' \
+    -target='module.external_dns_irsa_role[0].aws_iam_role_policy_attachment.this[0]'
+  # 2. The full apply then only removes the old pairs (and records the move).
+  terraform apply
+  ```
+
+  Drop the `-target` of any role whose `create_*_role` flag is off in this
+  environment.
 - **cert-manager's `dns01` attachment moves** from `this["dns01"]` to
   `additional["dns01"]` through a `moved` block in `iam.tf`. It is a state-only
   rename: no change in AWS.
