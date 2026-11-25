@@ -113,27 +113,27 @@ output "cluster_iam_role_arn" {
 
 output "ebs_csi_role_arn" {
   description = "IRSA role ARN used by the aws-ebs-csi-driver addon."
-  value       = module.ebs_csi_irsa_role.iam_role_arn
+  value       = module.ebs_csi_irsa_role.arn
 }
 
 output "cluster_autoscaler_role_arn" {
   description = "IRSA role ARN for the Cluster Autoscaler service account, empty when create_autoscaler_role is false."
-  value       = try(module.cluster_autoscaler_irsa_role[0].iam_role_arn, "")
+  value       = try(module.cluster_autoscaler_irsa_role[0].arn, "")
 }
 
 output "load_balancer_controller_role_arn" {
   description = "IRSA role ARN for the AWS Load Balancer Controller service account, empty when create_load_balancer_controller_role is false."
-  value       = try(module.aws_load_balancer_controller_irsa_role[0].iam_role_arn, "")
+  value       = try(module.aws_load_balancer_controller_irsa_role[0].arn, "")
 }
 
 output "external_dns_role_arn" {
   description = "IRSA role ARN for the ExternalDNS service account, empty when create_external_dns_role is false."
-  value       = try(module.external_dns_irsa_role[0].iam_role_arn, "")
+  value       = try(module.external_dns_irsa_role[0].arn, "")
 }
 
 output "cert_manager_role_arn" {
   description = "IRSA role ARN for the cert-manager service account, empty when create_cert_manager_role is false."
-  value       = try(module.cert_manager_irsa_role[0].iam_role_arn, "")
+  value       = try(module.cert_manager_irsa_role[0].arn, "")
 }
 
 ################################################################################

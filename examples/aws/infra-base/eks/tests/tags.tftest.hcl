@@ -32,6 +32,13 @@ run "cost_tags" {
   variables {
     environment = "dev"
     extra_tags  = { CostCenter = "test-cost-center", Project = "test-project" }
+
+    # Every IRSA role on, so scripts/test-cost-tags.py can check all five role
+    # names and the cert-manager policy attachment in the verbose plan.
+    create_external_dns_role      = true
+    create_cert_manager_role      = true
+    external_dns_hosted_zone_arns = ["arn:aws:route53:::hostedzone/Z0000000000000000TEST"]
+    cert_manager_hosted_zone_arns = ["arn:aws:route53:::hostedzone/Z0000000000000000TEST"]
     node_groups = {
       default = { tags = { Owner = "test-owner" } }
       batch   = { tags = { Owner = "batch-owner", CostCenter = "batch-cost-center" } }

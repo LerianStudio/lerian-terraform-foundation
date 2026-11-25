@@ -277,6 +277,26 @@ Same modules, same versions, same node SG rules and addons. What changed:
    log retention, and a `check` block that fails the plan when the public endpoint is
    enabled with an empty CIDR allowlist.
 
-Known upstream warning: `terraform validate` reports a deprecated
-`data.aws_region.current.name` inside `terraform-aws-modules/iam ~> 5.33` under AWS
-provider 6.x. Warning only; it clears when that module is bumped to 6.x repo-wide.
+## Upgrading the IRSA roles to `terraform-aws-modules/iam` v6
+
+The five IRSA roles moved from `iam-role-for-service-accounts-eks ~> 5.33` to
+`iam-role-for-service-accounts ~> 6.11`. That clears the deprecated
+`data.aws_region.current.name` warning `terraform validate` used to print under AWS
+provider 6.x. The first plan on an existing cluster should show this and nothing
+else for IAM:
+
+- **The five roles are not touched.** They keep the address `aws_iam_role.this[0]`
+  and their exact names (`use_name_prefix = false`), so the ARNs on the service
+  account annotations stay valid.
+- **The four managed policies are recreated** (EBS CSI, Cluster Autoscaler, AWS Load
+  Balancer Controller, ExternalDNS). v6 builds one policy per role under a new
+  address, and it is now named `lerian-{env}-eks-{role}` instead of
+  `AmazonEKS_*_Policy-<random>`. For each role the plan creates the new policy and
+  its attachment and destroys the old pair. All of it happens in one apply, but Terraform does not order the new attachment before the old one is
+  removed, so a controller can get `AccessDenied` for a few seconds. Apply outside a
+  deploy window.
+- **cert-manager's `dns01` attachment moves** from `this["dns01"]` to
+  `additional["dns01"]` through a `moved` block in `iam.tf`. It is a state-only
+  rename: no change in AWS.
+
+If the plan shows any `aws_iam_role` being replaced, stop: a role name drifted.
