@@ -45,6 +45,11 @@ port            = 27017
 instance_class         = "db.t3.medium"
 instances_count        = 1
 parameter_group_family = "docdb5.0"
+# engine_version must match the family's major.minor (any patch). Pin it for a
+# new cluster; null sends no version and AWS picks its own default, which may
+# not match the family. Leave it null only to keep an existing cluster's
+# AWS-chosen version.
+engine_version = "5.0.0"
 
 # TLS off in dev. Unlike product-console, this chart HAS a MONGO_TLS_CA_CERT
 # variable, so enabling it later is a two-sided change rather than a blocked one.

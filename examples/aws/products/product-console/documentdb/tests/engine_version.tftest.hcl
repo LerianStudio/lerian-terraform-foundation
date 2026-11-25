@@ -1,9 +1,13 @@
-# Plans a dedicated dev cluster under mocks. The assertion that the cluster is
-# planned with engine_version = "5.0.0" when the caller leaves it null lives in
-# scripts/test-cost-tags.py: the cluster is a nested module resource, which
-# tftest assertions cannot address.
+# Plans a dedicated dev cluster under mocks. The assertions on the planned
+# engine_version live in scripts/test-cost-tags.py: the cluster is a nested
+# module resource, which tftest assertions cannot address. That check reads
+# each run's plan by run name:
+#   pinned_like_tfvars_example -> "5.0.0"
+#   later_patch                -> "5.0.2"
+#   null_sends_no_version      -> unset (no derivation from the family, so
+#                                 existing clusters never plan a downgrade)
 #
-# The two failure runs point `module` at _modules/mongodb-documentdb directly:
+# The failure runs point `module` at _modules/mongodb-documentdb directly:
 # expect_failures only accepts objects of the module under test, never
 # module.documentdb.* of this root.
 
@@ -31,31 +35,43 @@ variables {
   allow_private_subnet_cidr_ingress      = false
   eks_node_security_group_lookup_enabled = false
   allowed_cidr_blocks                    = ["10.0.0.0/16"]
+  parameter_group_family                 = "docdb5.0"
+  engine_version                         = "5.0.0"
 }
 
-# engine_version left null: derived from docdb5.0 (checked in test-cost-tags.py).
-run "derived_from_family" {
+# What envs/*.tfvars-example now carry.
+run "pinned_like_tfvars_example" {
   command = plan
 }
 
-run "pinned_matching_family" {
+# Any patch of the family's major.minor is accepted.
+run "later_patch" {
   command = plan
 
   variables {
-    engine_version = "5.0.0"
+    engine_version = "5.0.2"
+  }
+}
+
+# Null must reach the provider as null: AWS keeps an existing cluster's version.
+run "null_sends_no_version" {
+  command = plan
+
+  variables {
+    engine_version = null
   }
 }
 
 run "pinned_mismatching_family" {
   command = plan
 
+  module {
+    source = "../../../_modules/mongodb-documentdb"
+  }
+
   variables {
     product        = "product-console"
     engine_version = "4.0.0"
-  }
-
-  module {
-    source = "../../../_modules/mongodb-documentdb"
   }
 
   expect_failures = [aws_docdb_cluster.main]
@@ -64,13 +80,14 @@ run "pinned_mismatching_family" {
 run "invalid_family" {
   command = plan
 
+  module {
+    source = "../../../_modules/mongodb-documentdb"
+  }
+
   variables {
     product                = "product-console"
     parameter_group_family = "mongo5.0"
-  }
-
-  module {
-    source = "../../../_modules/mongodb-documentdb"
+    engine_version         = null
   }
 
   expect_failures = [var.parameter_group_family]

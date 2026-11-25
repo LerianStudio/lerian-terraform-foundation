@@ -142,8 +142,8 @@ avoids).
 | `port` | number | `27017` | Cluster port. |
 | `instance_class` | string | `"db.t3.medium"` | Smallest class DocumentDB offers. Micro/small sizes are rejected at plan time - see below. |
 | `instances_count` | number | `2` | 1 for dev, >= 2 for stg/prd. |
-| `engine_version` | string | `null` | `null` derives it from `parameter_group_family` (`docdb5.0` -> `5.0.0`). When set, its major.minor must match the family; a plan-time precondition rejects a mismatch. |
-| `parameter_group_family` | string | `"docdb5.0"` | `docdbX.Y`, validated. Also sets the engine version when `engine_version` is `null`. |
+| `engine_version` | string | `null` | `null` sends no version: AWS uses its own default engine version, which may not match `parameter_group_family` and then fails on create. Set it for new clusters (e.g. `5.0.0` for `docdb5.0`); existing clusters keep whatever version they run. When set, its major.minor must match the family (any patch); a plan-time precondition rejects a mismatch. |
+| `parameter_group_family` | string | `"docdb5.0"` | `docdbX.Y`, validated. A pinned `engine_version` must carry the same major.minor. |
 | `documentdb_tls` | string | `"disabled"` | `enabled` or `disabled`. Validated. |
 | `backup_retention_period` | number | `7` | Days of automated backups. |
 | `preferred_backup_window` | string | `"07:00-09:00"` | Backup window. |

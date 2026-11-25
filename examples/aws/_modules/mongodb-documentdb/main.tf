@@ -39,12 +39,11 @@ locals {
 
   vpc_cidr = try(data.aws_vpc.selected[0].cidr_block, "")
 
-  # Engine version derived from the parameter group family when the caller
-  # leaves it null: docdb5.0 -> 5.0.0 (DocumentDB versions are always x.y.0).
-  # Sending null instead lets AWS pick ITS current default engine, which is no
-  # longer 5.0, and the docdb5.0 parameter group is then rejected at apply.
+  # "docdb5.0" -> "5.0": the major.minor a pinned engine_version must carry.
+  # engine_version itself is NOT derived from it: null must keep sending no
+  # version, or existing clusters AWS created or upgraded to a later patch
+  # (5.0.1, 8.0.2) would plan a downgrade to x.y.0, which DocumentDB refuses.
   family_version = trimprefix(var.parameter_group_family, "docdb")
-  engine_version = coalesce(var.engine_version, "${local.family_version}.0")
 
   ################################################################################
   # Ingress — THE single rule, identical in all five datastore modules
@@ -296,7 +295,7 @@ resource "aws_docdb_cluster" "main" {
 
   cluster_identifier              = module.naming.name
   engine                          = "docdb"
-  engine_version                  = local.engine_version
+  engine_version                  = var.engine_version
   port                            = var.port
   master_username                 = var.master_username
   master_password                 = aws_secretsmanager_secret_version.docdb_password[0].secret_string
@@ -321,7 +320,7 @@ resource "aws_docdb_cluster" "main" {
     # apply. Catch a pinned engine_version that disagrees with it at plan time.
     precondition {
       condition     = var.engine_version == null || can(regex("^${replace(local.family_version, ".", "\\.")}\\.[0-9]+$", var.engine_version))
-      error_message = "engine_version '${coalesce(var.engine_version, "null")}' does not match parameter_group_family '${var.parameter_group_family}': its major.minor must be ${local.family_version} (e.g. ${local.family_version}.0). Change both together, or leave engine_version null to derive it from the family."
+      error_message = "engine_version '${coalesce(var.engine_version, "null")}' does not match parameter_group_family '${var.parameter_group_family}': its major.minor must be ${local.family_version} (any patch, e.g. ${local.family_version}.0). Change both together."
     }
   }
 }

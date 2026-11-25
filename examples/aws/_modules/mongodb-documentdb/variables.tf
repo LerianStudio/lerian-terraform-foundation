@@ -113,13 +113,13 @@ variable "instances_count" {
 }
 
 variable "engine_version" {
-  description = "DocumentDB engine version (x.y.z). Leave null to derive it from parameter_group_family (docdb5.0 -> 5.0.0). When set, its major.minor must match the family, or the plan fails."
+  description = "DocumentDB engine version (x.y.z). Null sends no version: AWS uses its own default engine version, which may not match parameter_group_family and then fails on create; set it for new clusters (e.g. 5.0.0 for docdb5.0). Existing clusters keep whatever version they run. When set, its major.minor must match the family, or the plan fails."
   type        = string
   default     = null
 }
 
 variable "parameter_group_family" {
-  description = "DocumentDB cluster parameter group family (docdbX.Y). Also sets the engine version when engine_version is null: docdb5.0 -> 5.0.0."
+  description = "DocumentDB cluster parameter group family (docdbX.Y). A pinned engine_version must carry the same major.minor."
   type        = string
   default     = "docdb5.0"
 
