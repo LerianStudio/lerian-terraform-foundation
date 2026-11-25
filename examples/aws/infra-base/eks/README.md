@@ -300,17 +300,21 @@ else for IAM:
 
   ```bash
   # 1. Add the new policies and attachments; the old pairs stay attached.
-  terraform apply \
+  #    The cert-manager targets also take its pending moved block, which
+  #    Terraform otherwise refuses to leave out of a targeted plan.
+  terraform apply -var-file=envs/<env>.tfvars \
     -target='module.ebs_csi_irsa_role.aws_iam_role_policy_attachment.this[0]' \
     -target='module.cluster_autoscaler_irsa_role[0].aws_iam_role_policy_attachment.this[0]' \
     -target='module.aws_load_balancer_controller_irsa_role[0].aws_iam_role_policy_attachment.this[0]' \
-    -target='module.external_dns_irsa_role[0].aws_iam_role_policy_attachment.this[0]'
-  # 2. The full apply then only removes the old pairs (and records the move).
-  terraform apply
+    -target='module.external_dns_irsa_role[0].aws_iam_role_policy_attachment.this[0]' \
+    -target='module.cert_manager_irsa_role[0].aws_iam_role_policy_attachment.this' \
+    -target='module.cert_manager_irsa_role[0].aws_iam_role_policy_attachment.additional'
+  # 2. The full apply then only removes the old pairs.
+  terraform apply -var-file=envs/<env>.tfvars
   ```
 
   Drop the `-target` of any role whose `create_*_role` flag is off in this
-  environment.
+  environment (both cert-manager targets go together).
 - **cert-manager's `dns01` attachment moves** from `this["dns01"]` to
   `additional["dns01"]` through a `moved` block in `iam.tf`. It is a state-only
   rename: no change in AWS.
