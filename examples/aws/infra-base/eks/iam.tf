@@ -61,15 +61,24 @@ resource "aws_iam_role" "developer_role" {
 # Only the IAM side lives here. Except for the EBS CSI driver (installed as an
 # EKS addon in main.tf), the controllers themselves are installed with
 # Helm/GitOps and must reference these role ARNs on their service accounts.
+#
+# use_name_prefix = false ON EVERY ROLE. The v6 module defaults it to true, which
+# appends a random suffix to the role name and so changes the ARN every service
+# account is annotated with. The same flag also names the module's own policy, so
+# policy_name is set too: left alone it would be a fixed "EBS_CSI" and friends,
+# and two environments in one account would collide on it.
 ################################################################################
 
 # EBS CSI driver — always created, consumed by the aws-ebs-csi-driver addon.
 module "ebs_csi_irsa_role" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.33"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.11"
 
-  role_name             = "${module.naming.name}-ebs-csi"
+  name            = "${module.naming.name}-ebs-csi"
+  use_name_prefix = false
+
   attach_ebs_csi_policy = true
+  policy_name           = "${module.naming.name}-ebs-csi"
 
   oidc_providers = {
     main = {
@@ -83,14 +92,16 @@ module "ebs_csi_irsa_role" {
 
 # Cluster Autoscaler — install with Helm/GitOps.
 module "cluster_autoscaler_irsa_role" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.33"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.11"
   count   = var.create_autoscaler_role ? 1 : 0
 
-  role_name = "${module.naming.name}-cluster-autoscaler"
+  name            = "${module.naming.name}-cluster-autoscaler"
+  use_name_prefix = false
 
   attach_cluster_autoscaler_policy = true
-  cluster_autoscaler_cluster_ids   = [module.eks.cluster_name]
+  cluster_autoscaler_cluster_names = [module.eks.cluster_name]
+  policy_name                      = "${module.naming.name}-cluster-autoscaler"
 
   oidc_providers = {
     main = {
@@ -104,13 +115,15 @@ module "cluster_autoscaler_irsa_role" {
 
 # AWS Load Balancer Controller — install with Helm/GitOps.
 module "aws_load_balancer_controller_irsa_role" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.33"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.11"
   count   = var.create_load_balancer_controller_role ? 1 : 0
 
-  role_name = "${module.naming.name}-aws-load-balancer-controller"
+  name            = "${module.naming.name}-aws-load-balancer-controller"
+  use_name_prefix = false
 
   attach_load_balancer_controller_policy = true
+  policy_name                            = "${module.naming.name}-aws-load-balancer-controller"
 
   oidc_providers = {
     main = {
@@ -129,14 +142,16 @@ module "aws_load_balancer_controller_irsa_role" {
 # whatever the operator points external_dns_hosted_zone_arns at, created outside
 # this Terraform. Install with Helm/GitOps.
 module "external_dns_irsa_role" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.33"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.11"
   count   = var.create_external_dns_role ? 1 : 0
 
-  role_name = "${module.naming.name}-external-dns"
+  name            = "${module.naming.name}-external-dns"
+  use_name_prefix = false
 
   attach_external_dns_policy    = true
   external_dns_hosted_zone_arns = var.external_dns_hosted_zone_arns
+  policy_name                   = "${module.naming.name}-external-dns"
 
   oidc_providers = {
     main = {
@@ -274,16 +289,20 @@ resource "aws_iam_policy" "cert_manager_dns01" {
 }
 
 module "cert_manager_irsa_role" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.33"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.11"
   count   = var.create_cert_manager_role ? 1 : 0
 
-  role_name = "${module.naming.name}-cert-manager"
+  name            = "${module.naming.name}-cert-manager"
+  use_name_prefix = false
 
   # attach_cert_manager_policy stays FALSE (its default). The policy above
   # replaces it; enabling both would attach the unconditioned grant alongside
-  # the restricted one, and the widest Allow wins.
-  role_policy_arns = {
+  # the restricted one, and the widest Allow wins. create_policy = false keeps
+  # the module from building a policy of its own: the dns01 attachment below is
+  # the role's only permission.
+  create_policy = false
+  policies = {
     dns01 = aws_iam_policy.cert_manager_dns01[0].arn
   }
 
@@ -295,4 +314,18 @@ module "cert_manager_irsa_role" {
   }
 
   tags = module.naming.tags
+}
+
+# v6 renamed the module's custom-ARN attachment from `this` to `additional`.
+# Same role, same policy ARN, so the move is a state-only rename.
+#
+# The other four roles get no moved block on purpose. Their v5 policy
+# (aws_iam_policy.<addon>[0]) did map onto v6's aws_iam_policy.this[0], but the
+# name changes and an IAM policy name cannot be updated in place, so a move would
+# turn into destroy-then-create and leave the role with no policy in between.
+# Without the move, Terraform creates the new policy and attachment and destroys
+# the old ones as unrelated changes.
+moved {
+  from = module.cert_manager_irsa_role[0].aws_iam_role_policy_attachment.this["dns01"]
+  to   = module.cert_manager_irsa_role[0].aws_iam_role_policy_attachment.additional["dns01"]
 }

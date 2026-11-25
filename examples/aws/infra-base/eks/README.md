@@ -277,6 +277,56 @@ Same modules, same versions, same node SG rules and addons. What changed:
    log retention, and a `check` block that fails the plan when the public endpoint is
    enabled with an empty CIDR allowlist.
 
-Known upstream warning: `terraform validate` reports a deprecated
-`data.aws_region.current.name` inside `terraform-aws-modules/iam ~> 5.33` under AWS
-provider 6.x. Warning only; it clears when that module is bumped to 6.x repo-wide.
+## Upgrading the IRSA roles to `terraform-aws-modules/iam` v6
+
+The five IRSA roles moved from `iam-role-for-service-accounts-eks ~> 5.33` to
+`iam-role-for-service-accounts ~> 6.11`. That clears the deprecated
+`data.aws_region.current.name` warning `terraform validate` used to print under AWS
+provider 6.x. The first plan on an existing cluster should show this and nothing
+else for IAM:
+
+- **The five roles are not touched.** They keep the address `aws_iam_role.this[0]`
+  and their exact names (`use_name_prefix = false`), so the ARNs on the service
+  account annotations stay valid.
+- **The four managed policies are recreated** (EBS CSI, Cluster Autoscaler, AWS Load
+  Balancer Controller, ExternalDNS). v6 builds one policy per role under a new
+  address, and it is now named `lerian-{env}-eks-{role}` instead of
+  `AmazonEKS_*_Policy-<random>`. For each role the plan creates the new policy and
+  its attachment and destroys the old pair. In a single apply Terraform destroys
+  the old pairs in parallel with creating the new ones, so a controller can lose
+  its grant mid-apply, and if a create fails (a name already taken, a transient
+  IAM error) nothing rolls back. Apply it in two steps instead, so the new grants
+  are attached while the old ones are still there:
+
+  ```bash
+  # 1. Add the new policies and attachments; the old pairs stay attached.
+  #    Terraform refuses a targeted plan that leaves out a pending move, and
+  #    v6 moves two things: cert-manager's attachment (the moved block) and
+  #    each module's data.aws_partition.current, which gains a count in v6
+  #    (current -> current[0]). The partition targets are read-only.
+  terraform apply -var-file=envs/<env>.tfvars \
+    -target='module.ebs_csi_irsa_role.aws_iam_role_policy_attachment.this[0]' \
+    -target='module.ebs_csi_irsa_role.data.aws_partition.current' \
+    -target='module.cluster_autoscaler_irsa_role[0].aws_iam_role_policy_attachment.this[0]' \
+    -target='module.cluster_autoscaler_irsa_role[0].data.aws_partition.current' \
+    -target='module.aws_load_balancer_controller_irsa_role[0].aws_iam_role_policy_attachment.this[0]' \
+    -target='module.aws_load_balancer_controller_irsa_role[0].data.aws_partition.current' \
+    -target='module.external_dns_irsa_role[0].aws_iam_role_policy_attachment.this[0]' \
+    -target='module.external_dns_irsa_role[0].data.aws_partition.current' \
+    -target='module.cert_manager_irsa_role[0].aws_iam_role_policy_attachment.this' \
+    -target='module.cert_manager_irsa_role[0].aws_iam_role_policy_attachment.additional' \
+    -target='module.cert_manager_irsa_role[0].data.aws_partition.current'
+  # 2. The full apply then only removes the old pairs.
+  terraform apply -var-file=envs/<env>.tfvars
+  ```
+
+  Drop every `-target` of a role whose `create_*_role` flag is off in this
+  environment (its attachment and partition lines go together, and the three
+  cert-manager lines go together). Tested on a real cluster: step 1 adds the
+  4 new policies and attachments and records the moves (8 added, 0 destroyed),
+  step 2 destroys only the 4 old pairs, and a final plan shows no changes.
+- **cert-manager's `dns01` attachment moves** from `this["dns01"]` to
+  `additional["dns01"]` through a `moved` block in `iam.tf`. It is a state-only
+  rename: no change in AWS.
+
+If the plan shows any `aws_iam_role` being replaced, stop: a role name drifted.
