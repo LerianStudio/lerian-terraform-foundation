@@ -1,5 +1,17 @@
 # Lerian-terraform-foundation Changelog
 
+## [1.16.2](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.16.2)
+
+🛠️ Fixes:
+- Creating a DocumentDB cluster from the AWS product stack examples no longer fails on a rejected `docdb5.0` parameter group. Every DocumentDB `.tfvars-example` now sets `engine_version = "5.0.0"` next to `parameter_group_family = "docdb5.0"`, and the `mongodb-documentdb` module now validates the family format and refuses, at plan time, a pinned version whose major.minor does not match the family. Environments already generated from older examples should add this pin before creating a new cluster. Leave `engine_version` null only to keep the version AWS chose for an existing cluster, which still shows no diff. (#110, @bedatty)
+
+🧰 Maintenance:
+- The EKS example's five IRSA roles moved from `terraform-aws-modules/iam` v5 (`5.60.0`) to `iam-role-for-service-accounts` `~> 6.11` (`6.11.3`), which clears the deprecated-region warning from `terraform validate`. Role names and root inputs and outputs are unchanged, and the release-notes CI caller now uses `release-notes.yml` instead of the deprecated `gptchangelog.yml`. (#111, #113, @bedatty)
+
+[Compare changes](https://github.com/LerianStudio/lerian-terraform-foundation/compare/v1.16.1...v1.16.2)
+
+---
+
 ## [1.16.1](https://github.com/LerianStudio/lerian-terraform-foundation/releases/tag/v1.16.1)
 
 Fixes:
