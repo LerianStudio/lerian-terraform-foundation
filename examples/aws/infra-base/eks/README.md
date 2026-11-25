@@ -300,21 +300,31 @@ else for IAM:
 
   ```bash
   # 1. Add the new policies and attachments; the old pairs stay attached.
-  #    The cert-manager targets also take its pending moved block, which
-  #    Terraform otherwise refuses to leave out of a targeted plan.
+  #    Terraform refuses a targeted plan that leaves out a pending move, and
+  #    v6 moves two things: cert-manager's attachment (the moved block) and
+  #    each module's data.aws_partition.current, which loses its count. The
+  #    partition targets are read-only.
   terraform apply -var-file=envs/<env>.tfvars \
     -target='module.ebs_csi_irsa_role.aws_iam_role_policy_attachment.this[0]' \
+    -target='module.ebs_csi_irsa_role.data.aws_partition.current' \
     -target='module.cluster_autoscaler_irsa_role[0].aws_iam_role_policy_attachment.this[0]' \
+    -target='module.cluster_autoscaler_irsa_role[0].data.aws_partition.current' \
     -target='module.aws_load_balancer_controller_irsa_role[0].aws_iam_role_policy_attachment.this[0]' \
+    -target='module.aws_load_balancer_controller_irsa_role[0].data.aws_partition.current' \
     -target='module.external_dns_irsa_role[0].aws_iam_role_policy_attachment.this[0]' \
+    -target='module.external_dns_irsa_role[0].data.aws_partition.current' \
     -target='module.cert_manager_irsa_role[0].aws_iam_role_policy_attachment.this' \
-    -target='module.cert_manager_irsa_role[0].aws_iam_role_policy_attachment.additional'
+    -target='module.cert_manager_irsa_role[0].aws_iam_role_policy_attachment.additional' \
+    -target='module.cert_manager_irsa_role[0].data.aws_partition.current'
   # 2. The full apply then only removes the old pairs.
   terraform apply -var-file=envs/<env>.tfvars
   ```
 
-  Drop the `-target` of any role whose `create_*_role` flag is off in this
-  environment (both cert-manager targets go together).
+  Drop every `-target` of a role whose `create_*_role` flag is off in this
+  environment (its attachment and partition lines go together, and the three
+  cert-manager lines go together). Tested on a real cluster: step 1 adds the
+  4 new policies and attachments and records the moves (8 added, 0 destroyed),
+  step 2 destroys only the 4 old pairs, and a final plan shows no changes.
 - **cert-manager's `dns01` attachment moves** from `this["dns01"]` to
   `additional["dns01"]` through a `moved` block in `iam.tf`. It is a state-only
   rename: no change in AWS.
